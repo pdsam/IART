@@ -59,8 +59,9 @@ vector<Image *> loadInput(int input)
         photos.push_back(image);
 
     }
-        file.close();
-        return photos;
+
+    file.close();
+    return photos;
 }
 
 unsigned int evaluation(const vector<Image*> &images){
@@ -105,6 +106,9 @@ unsigned int evaluation(const vector<Image*> &images){
 		points += min( static_cast<int>(right_tags->size())-unique_tags_count ,min(unique_tags_count, static_cast<int>(left_tags->size())-unique_tags_count));
 		left += ((*left)->ori == V ? 2 : 1);
 		right += ((*right)->ori == V ? 2 : 1);
+
+        delete left_tags;
+        delete right_tags;
 	}	
 
 	return points;
