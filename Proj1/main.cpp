@@ -96,7 +96,7 @@ unsigned int evaluation(const vector<Image*> &images){
 				left_tags->end(),
 				right_tags->begin(),
 				right_tags->end(),
-				unique_tags.begin());
+				back_inserter(unique_tags));
 
 
 		int unique_tags_count = unique_tags.size();
