@@ -2,38 +2,59 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <sstream>
 
 using namespace std;
 
+enum orientation{H,V};
+
 struct Image{
-    int orientation; // H = 0 ; V = 1
-    int id;
+    
+    orientation ori;
     int numberTags;
     vector<string> tags;
 
 };
 
 
-vector<Image> loadInput(unsigned int input){
+vector<Image*> loadInput(int input){
     ifstream file;
     string line;
-    vector<Image> photos;
+    vector<Image*> photos;
+    string files[]={
+    "input/a_example.txt",
+    "input/b_lovely_landscapes.txt",
+    "input/c_memorable_moments.txt",
+    "input/d_pet_pictures.txt",
+    "input/e_shiny_selfies.txt"};
 
-    static char const *files[] = {
-	"input/a_example.txt",
-	"input/b_lovely_landscapes.txt",
-	"input/c_memorable_moments.txt",
-	"input/d_pet_pictures.txt",
-	"input/e_shiny_selfies.txt"
-    };
+    file.open(files[input]);
 
-    if (input > sizeof(files)/sizeof(files[0])){
-	    return photos;
-    }
 
+    getline(file,line);
+    while(getline(file,line)){
+        string orientation, numberTags;
+        Image * image = new Image();
+        istringstream iss(line);
+        iss >> orientation >> numberTags;
+        
+        (orientation == "H")? image->ori = H : image->ori = V;
+        image->numberTags = stoi(numberTags);
+
+        while(iss){
+            string tag;
+            iss >>tag;
+            image->tags.push_back(tag);
+
+        }
+        photos.push_back(image);
+
+
+
+    file.close();
     return photos;
 }
-
+}
 
 
 int main(){
