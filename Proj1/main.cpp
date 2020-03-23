@@ -29,11 +29,11 @@ vector<Image *> loadInput(int input)
     string line;
     vector<Image *> photos;
     string files[] = {
-        "input/a_example.txt",
-        "input/b_lovely_landscapes.txt",
-        "input/c_memorable_moments.txt",
-        "input/d_pet_pictures.txt",
-        "input/e_shiny_selfies.txt"};
+        "../input/a_example.txt",
+        "../input/b_lovely_landscapes.txt",
+        "../input/c_memorable_moments.txt",
+        "../input/d_pet_pictures.txt",
+        "../input/e_shiny_selfies.txt"};
 
     file.open(files[input]);
 
@@ -58,13 +58,13 @@ vector<Image *> loadInput(int input)
             sort(image->tags.begin(),image->tags.end());
         photos.push_back(image);
 
+    }
         file.close();
         return photos;
-    }
 }
 
 int main()
 {
-
+    loadInput(0);
     return 0;
 }
