@@ -67,7 +67,7 @@ unsigned int evaluation(const vector<Image*> &images){
 		return 0;
 
 	auto left = images.begin();
-	auto right = left + ((*left)->ori == V ? 1 : 0);
+	auto right = left + ((*left)->ori == V ? 2 : 1);
 
 	unsigned points = 0;
 	while(right != images.end()){
