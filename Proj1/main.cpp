@@ -14,40 +14,30 @@ struct Image{
 };
 
 
-vector<Image> loadInput(int input){
+vector<Image> loadInput(unsigned int input){
     ifstream file;
     string line;
     vector<Image> photos;
 
-    switch(input){
-        case 0:
-        file.open("input/a_example.txt");
-            break;
-        case 1:
-            file.open("input/b_lovely_landscapes.txt");
-            break;
-        case 2:
-            file.open("input/c_memorable_moments.txt");
-            break;
-        case 3:
-            file.open("input/d_pet_pictures.txt");
-            break;
-        case 4:
-            file.open("input/e_shiny_selfies.txt");
-            break;
+    static char const *files[] = {
+	"input/a_example.txt",
+	"input/b_lovely_landscapes.txt",
+	"input/c_memorable_moments.txt",
+	"input/d_pet_pictures.txt",
+	"input/e_shiny_selfies.txt"
+    };
 
+    if (input > sizeof(files)/sizeof(files[0])){
+	    return photos;
     }
 
-
-    file.close();
     return photos;
 }
 
 
+
 int main(){
 
-
-
-
+	return 0;
 
 }
