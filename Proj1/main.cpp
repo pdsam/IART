@@ -3,62 +3,68 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
 
-enum orientation{H,V};
+enum orientation
+{
+    H,
+    V
+};
 
-struct Image{
-    
+struct Image
+{
+
     orientation ori;
     int numberTags;
     vector<string> tags;
-
 };
 
 
-vector<Image*> loadInput(int input){
+
+vector<Image *> loadInput(int input)
+{
     ifstream file;
     string line;
-    vector<Image*> photos;
-    string files[]={
-    "input/a_example.txt",
-    "input/b_lovely_landscapes.txt",
-    "input/c_memorable_moments.txt",
-    "input/d_pet_pictures.txt",
-    "input/e_shiny_selfies.txt"};
+    vector<Image *> photos;
+    string files[] = {
+        "input/a_example.txt",
+        "input/b_lovely_landscapes.txt",
+        "input/c_memorable_moments.txt",
+        "input/d_pet_pictures.txt",
+        "input/e_shiny_selfies.txt"};
 
     file.open(files[input]);
 
-
-    getline(file,line);
-    while(getline(file,line)){
+    getline(file, line);
+    while (getline(file, line))
+    {
         string orientation, numberTags;
-        Image * image = new Image();
+        Image *image = new Image();
         istringstream iss(line);
         iss >> orientation >> numberTags;
-        
-        (orientation == "H")? image->ori = H : image->ori = V;
+
+        (orientation == "H") ? image->ori = H : image->ori = V;
         image->numberTags = stoi(numberTags);
 
-        while(iss){
+        while (iss)
+        {
             string tag;
-            iss >>tag;
+            iss >> tag;
             image->tags.push_back(tag);
 
         }
+            sort(image->tags.begin(),image->tags.end());
         photos.push_back(image);
 
-
-
-    file.close();
-    return photos;
-}
+        file.close();
+        return photos;
+    }
 }
 
+int main()
+{
 
-int main(){
-
-	return 0;
-
+    return 0;
 }
