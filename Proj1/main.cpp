@@ -35,16 +35,18 @@ vector<Image *> loadInput(int input)
         "../input/c_memorable_moments.txt",
         "../input/d_pet_pictures.txt",
         "../input/e_shiny_selfies.txt"};
+
+    file.open(files[input]);
+
     getline(file, line);
     while (getline(file, line))
     {
         string orientation, numberTags;
         Image *image = new Image();
         istringstream iss(line);
-        iss >> orientation >> numberTags;
+        iss >> orientation >> image->numberTags;
 
         (orientation == "H") ? image->ori = H : image->ori = V;
-        image->numberTags = stoi(numberTags);
 
         while (iss)
         {
