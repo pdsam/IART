@@ -60,7 +60,7 @@ struct Slide{
 typedef vector<Slide*> SlideShow;
 
 
-SlideShow loadInput(int input)
+pair<SlideShow, SlideShow> loadInput(int input)
 {
     SlideShow slideshow;
         vector<Image*> vertical_photos;
@@ -113,21 +113,23 @@ SlideShow loadInput(int input)
     }
     file.close();
 
-        assert(vertical_photos.size()%2==0);
-        while(vertical_photos.size()){
-                auto slide = new Slide();
-                slide->vert_images[0] = vertical_photos.back();
-                vertical_photos.pop_back();
-                slide->vert_images[1] = vertical_photos.back();
-                vertical_photos.pop_back();
+    vector<Slide*> vertical_slides;
+    assert(vertical_photos.size()%2==0);
+    while(vertical_photos.size()){
+            auto slide = new Slide();
+            slide->vert_images[0] = vertical_photos.back();
+            vertical_photos.pop_back();
+            slide->vert_images[1] = vertical_photos.back();
+            vertical_photos.pop_back();
 
-                slideshow.push_back(slide);
-        }
+            slideshow.push_back(slide);
+            vertical_slides.push_back(slide);
+    }
 
-		for(auto &element : slideshow)
-			element->do_tags();
+    for(auto &element : slideshow)
+        element->do_tags();
 
-        return slideshow;
+    return make_pair(slideshow, vertical_slides);
 }
 
 unsigned int evaluation(const SlideShow &slideshow){
@@ -170,6 +172,18 @@ namespace Operator{
                 return slideshow;
         }
 
+        SlideShow swap_verticals(SlideShow &slideshow, int i, int j) {
+            if (!slideshow[i]->is_vertical() || !slideshow[j]->is_vertical()) {
+                return slideshow;
+            }
+
+            swap(slideshow[i]->vert_images[1], slideshow[j]->vert_images[1]);
+            slideshow[i]->do_tags();
+            slideshow[j]->do_tags();
+
+            return slideshow;
+        }
+
 };
 
 void print_slideshow(const SlideShow &slideshow){
@@ -184,9 +198,9 @@ void print_slideshow(const SlideShow &slideshow){
 
 }
 
-SlideShow hill_climb(const SlideShow &slideshow){
+SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 
-        SlideShow working_cpy(slideshow);
+        SlideShow working_cpy(slides.first);
         /*sort(working_cpy.begin(), working_cpy.end()-working_cpy.size()/2, [](auto &left, auto &right) { return left->number_tags() < right->number_tags(); });
         sort(working_cpy.end()-working_cpy.size()/2, working_cpy.end(), [](auto &left, auto &right) { return left->number_tags() > right->number_tags(); });
 		*/
@@ -196,6 +210,7 @@ SlideShow hill_climb(const SlideShow &slideshow){
 
 		auto cur_value = evaluation(working_cpy);
 		std::uniform_int_distribution<> dis(0, working_cpy.size());
+		std::uniform_int_distribution<> vert_dis(0, slides.second.size());
 		for(int i = 0; i<working_cpy.size(); i++){
 
 			auto l = dis(g);
@@ -207,10 +222,23 @@ SlideShow hill_climb(const SlideShow &slideshow){
 			auto new_val = evaluation(working_cpy);
 			if(new_val > cur_value){
 				cur_value = new_val;
-				cout << "New Value! " << cur_value << endl;
+				cout << "SWAP - New Value! " << cur_value << endl;
 				continue;
 			}
 			Operator::swap_slides(working_cpy, l, r);
+
+
+            auto vert_i = vert_dis(g);
+            auto vert_j = vert_dis(g);
+
+            Operator::swap_verticals(slides.second, vert_i, vert_j);
+			new_val = evaluation(working_cpy);
+			if(new_val > cur_value){
+				cur_value = new_val;
+				cout << "VERT - New Value! " << cur_value << endl;
+				continue;
+			}
+            Operator::swap_verticals(slides.second, vert_i, vert_j);
 
 		}
 
@@ -222,7 +250,7 @@ int main(){
 		srand(time(nullptr));
         for(int i=3; i<4; i++){
                 auto before = loadInput(i);
-                cout << "Before: " << evaluation(before) << endl;
+                cout << "Before: " << evaluation(before.first) << endl;
                 auto after = hill_climb(before);
                 cout << "After: " << evaluation(after) << endl;
         }
