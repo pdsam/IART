@@ -2,11 +2,14 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <set>
 #include <map>
 #include <sstream>
 #include <assert.h>
 #include <algorithm>
+#include <random>
+#include <ctime>
 
 using namespace std;
 
@@ -30,7 +33,7 @@ struct Slide{
                 Image* vert_images[2];
         };
 
-		set<int> all_tags;
+		unordered_set<int> all_tags;
 
         bool is_vertical() {
                 return image->orientation == V;
@@ -184,22 +187,30 @@ void print_slideshow(const SlideShow &slideshow){
 SlideShow hill_climb(const SlideShow &slideshow){
 
         SlideShow working_cpy(slideshow);
-        sort(working_cpy.begin(), working_cpy.end(), [](auto &left, auto &right) { return left->number_tags() < right->number_tags(); });
+        /*sort(working_cpy.begin(), working_cpy.end()-working_cpy.size()/2, [](auto &left, auto &right) { return left->number_tags() < right->number_tags(); });
+        sort(working_cpy.end()-working_cpy.size()/2, working_cpy.end(), [](auto &left, auto &right) { return left->number_tags() > right->number_tags(); });
+		*/
+		std::random_device rd;
+		std::mt19937 g(rd());
+		shuffle(working_cpy.begin(), working_cpy.end(), g);
 
 		auto cur_value = evaluation(working_cpy);
+		std::uniform_int_distribution<> dis(0, working_cpy.size());
 		for(int i = 0; i<working_cpy.size(); i++){
-			cout << "Linha: " << i << " cur_value " << cur_value << endl;
 
-			for(int j = i+1; j<working_cpy.size();j++){
-				cout << j << endl;
-				Operator::swap_slides(working_cpy, i, j);
-				auto new_val = evaluation(working_cpy);
-				if(new_val > cur_value){
-					cur_value = new_val;
-					break;
-				}
-				Operator::swap_slides(working_cpy, i, j);
+			auto l = dis(g);
+			auto r = dis(g);
+			if(l == r)
+				r = (r+1)%working_cpy.size();
+
+			Operator::swap_slides(working_cpy, l, r);
+			auto new_val = evaluation(working_cpy);
+			if(new_val > cur_value){
+				cur_value = new_val;
+				cout << "New Value! " << cur_value << endl;
+				continue;
 			}
+			Operator::swap_slides(working_cpy, l, r);
 
 		}
 
@@ -208,7 +219,8 @@ SlideShow hill_climb(const SlideShow &slideshow){
 
 int main(){
 
-        for(int i=1; i<2; i++){
+		srand(time(nullptr));
+        for(int i=3; i<4; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before) << endl;
                 auto after = hill_climb(before);
