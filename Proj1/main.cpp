@@ -2,120 +2,217 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 #include <sstream>
 #include <assert.h>
 #include <algorithm>
 
 using namespace std;
 
-enum orientation
+
+enum Orientation
 {
     H,
     V
 };
-
 struct Image
 {
-
-    orientation ori;
-    int numberTags;
-    vector<string> tags;
+    Orientation orientation;
+    set<int> tags;
 };
 
 
+struct Slide{
 
-vector<Image *> loadInput(int input)
+        union{
+                Image* image;
+                Image* vert_images[2];
+        };
+
+		set<int> all_tags;
+
+        bool is_vertical() {
+                return image->orientation == V;
+        }
+
+		void do_tags(){
+			all_tags.clear();
+			all_tags.insert(vert_images[0]->tags.begin(), vert_images[0]->tags.end());
+			if(!is_vertical()){
+				return;
+			}
+			all_tags.insert(vert_images[1]->tags.begin(), vert_images[1]->tags.end());
+		}
+
+        auto get_tags(){
+                return all_tags;
+        }
+
+        int number_tags(){
+                return get_tags().size();
+        }
+};
+
+typedef vector<Slide*> SlideShow;
+
+
+SlideShow loadInput(int input)
 {
+    SlideShow slideshow;
+        vector<Image*> vertical_photos;
+
     ifstream file;
     string line;
-    vector<Image *> photos;
-    string files[] = {
-        "../input/a_example.txt",
-        "../input/b_lovely_landscapes.txt",
-        "../input/c_memorable_moments.txt",
-        "../input/d_pet_pictures.txt",
-        "../input/e_shiny_selfies.txt"};
+    static const string files[] = {
+        "input/a_example.txt",
+        "input/b_lovely_landscapes.txt",
+        "input/c_memorable_moments.txt",
+        "input/d_pet_pictures.txt",
+        "input/e_shiny_selfies.txt"};
 
     file.open(files[input]);
-
     getline(file, line);
-    while (getline(file, line))
+	map<string,int> simplifier;
+	auto counter = 0;
+	while (getline(file, line))
     {
-        string orientation, numberTags;
+        string orientation, _;
+
         Image *image = new Image();
         istringstream iss(line);
-        iss >> orientation >> image->numberTags;
+        iss >> orientation >> _;
 
-        (orientation == "H") ? image->ori = H : image->ori = V;
+        image->orientation = (orientation == "H" ? H :  V);
 
         while (iss)
         {
             string tag;
             iss >> tag;
-            image->tags.push_back(tag);
+
+			auto cur = simplifier.find(tag);
+			if(cur == simplifier.end()){
+				auto res = simplifier.insert(make_pair(tag, counter++));
+				cur = get<0>(res);
+			}
+            image->tags.insert(cur->second);
 
         }
-            sort(image->tags.begin(),image->tags.end());
-        photos.push_back(image);
 
+		if(image->orientation == H){
+				auto slide = new Slide();
+				slide->image = image;
+				slideshow.push_back(slide);
+		}
+		else{
+				vertical_photos.push_back(image);
+		}
     }
-
     file.close();
-    return photos;
+
+        assert(vertical_photos.size()%2==0);
+        while(vertical_photos.size()){
+                auto slide = new Slide();
+                slide->vert_images[0] = vertical_photos.back();
+                vertical_photos.pop_back();
+                slide->vert_images[1] = vertical_photos.back();
+                vertical_photos.pop_back();
+
+                slideshow.push_back(slide);
+        }
+
+		for(auto &element : slideshow)
+			element->do_tags();
+
+        return slideshow;
 }
 
-unsigned int evaluation(const vector<Image*> &images){
+unsigned int evaluation(const SlideShow &slideshow){
 
-	if(images.size() < 2)
-		return 0;
+        if(slideshow.size() < 2)
+                return 0;
 
-	auto left = images.begin();
-	auto right = left + ((*left)->ori == V ? 2 : 1);
+        auto left = slideshow.begin();
+        auto right = left + 1;
 
-	unsigned points = 0;
-	while(right != images.end()){
+        unsigned points = 0;
+        while(right != slideshow.end()){
 
-		int distance = (*left)->ori == V? 2 : 1;
-		assert( (left+distance)==right );
+                auto left_tags = (*left)->get_tags();
+                auto right_tags = (*right)->get_tags();
 
-		#define VERTICAL_FOLLOWS_VERTICAL(x) if((*x)->ori == V) assert((*(x+1))->ori == V);
-		VERTICAL_FOLLOWS_VERTICAL(left)
-		VERTICAL_FOLLOWS_VERTICAL(right)
+                const auto small_to_big = (left_tags.size() > right_tags.size() ? make_pair(right_tags,left_tags) : make_pair(left_tags, right_tags));
+                int common_tags = 0;
 
-		auto left_tags = new vector<string>((*left)->tags);
-		auto right_tags = new vector<string>((*right)->tags);
+                for(const auto &element : get<0>(small_to_big)){
+                        if(get<1>(small_to_big).find(element) != get<1>(small_to_big).end())
+                                common_tags +=1;
+                }
 
-		#define GET_TAGS(x, y) \
-			if((*x)->ori == V) {\
-				y->reserve(y->size() + (*(x+1))->tags.size());\
-				y->insert(y->end(), (*(x+1))->tags.begin(), (*(x+1))->tags.end());\
+                points += min((*left)->number_tags()-common_tags, min(common_tags, (*right)->number_tags()-common_tags));
+                left++;
+                right++;
+        }
+
+        return points;
+}
+
+
+namespace Operator{
+
+        SlideShow swap_slides(SlideShow &slideshow, int i, int j){
+                if(i == j)
+                        return slideshow;
+                swap(slideshow[i], slideshow[j]);
+                return slideshow;
+        }
+
+};
+
+void print_slideshow(const SlideShow &slideshow){
+
+	for(auto &element: slideshow){
+		cout << "ELEMENT" << endl;
+		for(auto &tag: element->get_tags())
+			cout << tag << endl;
+
+	}
+
+
+}
+
+SlideShow hill_climb(const SlideShow &slideshow){
+
+        SlideShow working_cpy(slideshow);
+        sort(working_cpy.begin(), working_cpy.end(), [](auto &left, auto &right) { return left->number_tags() < right->number_tags(); });
+
+		auto cur_value = evaluation(working_cpy);
+		for(int i = 0; i<working_cpy.size(); i++){
+			cout << "Linha: " << i << " cur_value " << cur_value << endl;
+
+			for(int j = i+1; j<working_cpy.size();j++){
+				cout << j << endl;
+				Operator::swap_slides(working_cpy, i, j);
+				auto new_val = evaluation(working_cpy);
+				if(new_val > cur_value){
+					cur_value = new_val;
+					break;
+				}
+				Operator::swap_slides(working_cpy, i, j);
 			}
 
-		GET_TAGS(left, left_tags);
-		GET_TAGS(right, right_tags);
-			
-		vector<string> unique_tags;
-		set_intersection(left_tags->begin(),
-				left_tags->end(),
-				right_tags->begin(),
-				right_tags->end(),
-				back_inserter(unique_tags));
+		}
 
-
-		int unique_tags_count = unique_tags.size();
-		points += min( static_cast<int>(right_tags->size())-unique_tags_count ,min(unique_tags_count, static_cast<int>(left_tags->size())-unique_tags_count));
-		left += ((*left)->ori == V ? 2 : 1);
-		right += ((*right)->ori == V ? 2 : 1);
-
-        delete left_tags;
-        delete right_tags;
-	}	
-
-	return points;
+        return working_cpy;
 }
 
 int main(){
 
-	loadInput(0);
-	return 0;
+        for(int i=1; i<2; i++){
+                auto before = loadInput(i);
+                cout << "Before: " << evaluation(before) << endl;
+                auto after = hill_climb(before);
+                cout << "After: " << evaluation(after) << endl;
+        }
+        return 0;
 }
