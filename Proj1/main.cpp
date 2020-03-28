@@ -233,9 +233,6 @@ int calc_around_slide(SlideShow& slideshow, int i) {
 SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 
         SlideShow working_cpy(slides.first);
-        /*sort(working_cpy.begin(), working_cpy.end()-working_cpy.size()/2, [](auto &left, auto &right) { return left->number_tags() < right->number_tags(); });
-        sort(working_cpy.end()-working_cpy.size()/2, working_cpy.end(), [](auto &left, auto &right) { return left->number_tags() > right->number_tags(); });
-		*/
 		std::random_device rd;
 		std::mt19937 g(rd());
 		shuffle(working_cpy.begin(), working_cpy.end(), g);
@@ -244,6 +241,7 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
         for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
                     s->index=i++;
                 });
+
 		auto cur_value = evaluation(working_cpy);
 		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
@@ -262,15 +260,12 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 			if(diff > 0){
 				cur_value += diff;
 				cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
-                /*helper++;
-                if (helper > 100 ) {
-                    auto temp = evaluation(working_cpy);
-                    cout << "      VER - New Value! " << temp << " " << i << endl;
-                    helper = 0;
-                }*/
 				continue;
 			}
 			Operator::swap_slides(working_cpy, l, r);
+
+			if(slides.second.size() == 0)
+				continue;
 
 
             auto vert_i = vert_dis(g);
@@ -286,12 +281,6 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 			if(diff > 0){
 				cur_value += diff;
 				cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
-                /*helper++;
-                if (helper > 100 ) {
-                    auto temp = evaluation(working_cpy);
-                    cout << "      VER - New Value! " << temp << " " << i << endl;
-                    helper = 0;
-                }*/
 				continue;
 			}
             Operator::swap_verticals(slides.second, vert_i, vert_j);
@@ -304,7 +293,7 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 int main(){
 
 		srand(time(nullptr));
-        for(int i=3; i<4; i++){
+        for(int i=1; i<2; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
                 auto after = hill_climb(before);
