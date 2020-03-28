@@ -34,6 +34,7 @@ struct Slide{
         };
 
 		unordered_set<int> all_tags;
+        size_t index;
 
         bool is_vertical() {
                 return image->orientation == V;
@@ -169,6 +170,8 @@ namespace Operator{
                 if(i == j)
                         return slideshow;
                 swap(slideshow[i], slideshow[j]);
+                slideshow[i]->index = i;
+                slideshow[j]->index = j;
                 return slideshow;
         }
 
@@ -198,48 +201,90 @@ void print_slideshow(const SlideShow &slideshow){
 
 }
 
+int calculate_trasition(Slide* left, Slide* right) {
+    auto left_tags = left->get_tags();
+    auto right_tags = right->get_tags();
+
+    const auto small_to_big = (left_tags.size() > right_tags.size() ? make_pair(right_tags,left_tags) : make_pair(left_tags, right_tags));
+    int common_tags = 0;
+
+    for(const auto &element : get<0>(small_to_big)){
+            if(get<1>(small_to_big).find(element) != get<1>(small_to_big).end())
+                    common_tags +=1;
+    }
+
+    return min(left->number_tags()-common_tags, min(common_tags, right->number_tags()-common_tags));
+}
+
+int calc_around_slide(SlideShow& slideshow, int i) {
+    int sum{};
+
+    if (i > 0) {
+        sum += calculate_trasition(slideshow[i-1], slideshow[i]);
+    }
+
+    if (i < slideshow.size()-1) {
+        sum += calculate_trasition(slideshow[i], slideshow[i+1]);
+    }
+
+    return sum;
+}
+
 SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 
         SlideShow working_cpy(slides.first);
-        /*sort(working_cpy.begin(), working_cpy.end()-working_cpy.size()/2, [](auto &left, auto &right) { return left->number_tags() < right->number_tags(); });
-        sort(working_cpy.end()-working_cpy.size()/2, working_cpy.end(), [](auto &left, auto &right) { return left->number_tags() > right->number_tags(); });
-		*/
+
 		std::random_device rd;
 		std::mt19937 g(rd());
+
 		shuffle(working_cpy.begin(), working_cpy.end(), g);
 
-		auto cur_value = evaluation(working_cpy);
-		std::uniform_int_distribution<> dis(0, working_cpy.size());
-		std::uniform_int_distribution<> vert_dis(0, slides.second.size());
-		for(int i = 0; i<working_cpy.size(); i++){
+		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
+        size_t i = 0;
+        for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
+                    s->index=i++;
+                });
+
+		auto cur_value = evaluation(working_cpy);
+		for(int i = 0; i<working_cpy.size(); i++){
 			auto l = dis(g);
 			auto r = dis(g);
 			if(l == r)
 				r = (r+1)%working_cpy.size();
 
+            int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 			Operator::swap_slides(working_cpy, l, r);
-			auto new_val = evaluation(working_cpy);
-			if(new_val > cur_value){
-				cur_value = new_val;
-				cout << "SWAP - New Value! " << cur_value << endl;
+            int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+            int diff = after - before;
+			if(diff > 0){
+				cur_value += diff;
+				cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
 				continue;
 			}
 			Operator::swap_slides(working_cpy, l, r);
+
+			if(slides.second.size() == 0)
+				continue;
 
 
             auto vert_i = vert_dis(g);
             auto vert_j = vert_dis(g);
 
+            l = slides.second[vert_i]->index;
+            r = slides.second[vert_j]->index;
+
+            before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
             Operator::swap_verticals(slides.second, vert_i, vert_j);
-			new_val = evaluation(working_cpy);
-			if(new_val > cur_value){
-				cur_value = new_val;
-				cout << "VERT - New Value! " << cur_value << endl;
+            after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+            diff = after - before;
+			if(diff > 0){
+				cur_value += diff;
+				cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
 				continue;
 			}
             Operator::swap_verticals(slides.second, vert_i, vert_j);
-
 		}
 
         return working_cpy;
@@ -268,7 +313,7 @@ SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
 int main(){
 
 		srand(time(nullptr));
-        for(int i=3; i<4; i++){
+        for(int i=1; i<2; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
                 auto after = hill_climb(before);
