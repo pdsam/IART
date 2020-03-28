@@ -245,6 +245,26 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
         return working_cpy;
 }
 
+inline bool acceptMove(int iteration, int currentScore, int NextScore){
+
+    int delta = NextScore -currentScore;
+
+    if(delta >0 ){
+        return true;
+    }
+
+    else{
+      return  ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration-iteration));
+    }
+
+
+}
+
+
+SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
+
+}
+
 int main(){
 
 		srand(time(nullptr));
