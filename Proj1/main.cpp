@@ -233,9 +233,14 @@ int calc_around_slide(SlideShow& slideshow, int i) {
 SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 
         SlideShow working_cpy(slides.first);
+
 		std::random_device rd;
 		std::mt19937 g(rd());
+
 		shuffle(working_cpy.begin(), working_cpy.end(), g);
+
+		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
         size_t i = 0;
         for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
@@ -243,11 +248,7 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
                 });
 
 		auto cur_value = evaluation(working_cpy);
-		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
-		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
-         int helper = 0;
 		for(int i = 0; i<working_cpy.size(); i++){
-
 			auto l = dis(g);
 			auto r = dis(g);
 			if(l == r)
@@ -284,7 +285,6 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 				continue;
 			}
             Operator::swap_verticals(slides.second, vert_i, vert_j);
-
 		}
 
         return working_cpy;
