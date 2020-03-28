@@ -69,11 +69,11 @@ pair<SlideShow, SlideShow> loadInput(int input)
     ifstream file;
     string line;
     static const string files[] = {
-        "input/a_example.txt",
-        "input/b_lovely_landscapes.txt",
-        "input/c_memorable_moments.txt",
-        "input/d_pet_pictures.txt",
-        "input/e_shiny_selfies.txt"};
+        "../input/a_example.txt",
+        "../input/b_lovely_landscapes.txt",
+        "../input/c_memorable_moments.txt",
+        "../input/d_pet_pictures.txt",
+        "../input/e_shiny_selfies.txt"};
 
     file.open(files[input]);
     getline(file, line);
@@ -369,10 +369,10 @@ SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
 int main(){
 
 		srand(time(nullptr));
-        for(int i=1; i<2; i++){
+        for(int i=2; i<3; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
-                auto after = hill_climb(before);
+                auto after = simulated_annealing(before);
                 cout << "After: " << evaluation(after) << endl;
         }
         return 0;
