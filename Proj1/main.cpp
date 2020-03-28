@@ -364,7 +364,7 @@ SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
 }
     
 
-}
+
 
 int main(){
 
