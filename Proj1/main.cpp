@@ -58,13 +58,13 @@ struct Slide{
         }
 };
 
-typedef vector<Slide*> SlideShow;
+typedef vector<Slide> SlideShow;
 
 
 pair<SlideShow, SlideShow> loadInput(int input)
 {
     SlideShow slideshow;
-        vector<Image*> vertical_photos;
+    vector<Image*> vertical_photos;
 
     ifstream file;
     string line;
@@ -106,7 +106,7 @@ pair<SlideShow, SlideShow> loadInput(int input)
 		if(image->orientation == H){
 				auto slide = new Slide();
 				slide->image = image;
-				slideshow.push_back(slide);
+				slideshow.push_back(*slide);
 		}
 		else{
 				vertical_photos.push_back(image);
@@ -114,7 +114,7 @@ pair<SlideShow, SlideShow> loadInput(int input)
     }
     file.close();
 
-    vector<Slide*> vertical_slides;
+    vector<Slide> vertical_slides;
     assert(vertical_photos.size()%2==0);
     while(vertical_photos.size()){
             auto slide = new Slide();
@@ -123,12 +123,12 @@ pair<SlideShow, SlideShow> loadInput(int input)
             slide->vert_images[1] = vertical_photos.back();
             vertical_photos.pop_back();
 
-            slideshow.push_back(slide);
-            vertical_slides.push_back(slide);
+            slideshow.push_back(*slide);
+            vertical_slides.push_back(*slide);
     }
 
     for(auto &element : slideshow)
-        element->do_tags();
+        element.do_tags();
 
     return make_pair(slideshow, vertical_slides);
 }
