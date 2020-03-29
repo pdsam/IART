@@ -291,13 +291,14 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 }
 
 inline bool acceptMove(int iteration,int maxIteration , int delta){
-
     if(delta >0 ){
         return true;
     }
+    else if(delta == 0){return false;}
 
     else{
-      return  ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration-iteration));
+    cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
+      return  ((double) rand() / (RAND_MAX)) > exp(-delta/(maxIteration/(double)iteration));
     }
 
 
@@ -321,6 +322,7 @@ SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
                 });
 
 		auto cur_value = evaluation(working_cpy);
+        cout << working_cpy.size() << "\n";
 		for(int i = 0; i<working_cpy.size(); i++){
 			auto l = dis(g);
 			auto r = dis(g);
@@ -369,7 +371,7 @@ SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
 int main(){
 
 		srand(time(nullptr));
-        for(int i=2; i<3; i++){
+        for(int i=1; i<2; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
                 auto after = simulated_annealing(before);
