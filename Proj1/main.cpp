@@ -69,11 +69,11 @@ pair<SlideShow, SlideShow> loadInput(int input)
     ifstream file;
     string line;
     static const string files[] = {
-        "input/a_example.txt",
-        "input/b_lovely_landscapes.txt",
-        "input/c_memorable_moments.txt",
-        "input/d_pet_pictures.txt",
-        "input/e_shiny_selfies.txt"};
+        "../input/a_example.txt",
+        "../input/b_lovely_landscapes.txt",
+        "../input/c_memorable_moments.txt",
+        "../input/d_pet_pictures.txt",
+        "../input/e_shiny_selfies.txt"};
 
     file.open(files[input]);
     getline(file, line);
@@ -237,7 +237,7 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 		std::random_device rd;
 		std::mt19937 g(rd());
 
-		shuffle(working_cpy.begin(), working_cpy.end(), g);
+		 (working_cpy.begin(), working_cpy.end(), g);
 
 		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
@@ -290,13 +290,91 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
         return working_cpy;
 }
 
+inline bool acceptMove(int iteration,int maxIteration , int delta){
+    if(delta >0 ){
+        return true;
+    }
+    else if(delta == 0){return false;}
+
+    else{
+    cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
+      return  ((double) rand() / (RAND_MAX)) > exp(-delta/(maxIteration/(double)iteration));
+    }
+
+
+}
+
+
+SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
+    SlideShow working_cpy(slides.first);
+
+		std::random_device rd;
+		std::mt19937 g(rd());
+
+		 (working_cpy.begin(), working_cpy.end(), g);
+
+		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
+
+        size_t i = 0;
+        for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
+                    s->index=i++;
+                });
+
+		auto cur_value = evaluation(working_cpy);
+        cout << working_cpy.size() << "\n";
+		for(int i = 0; i<working_cpy.size(); i++){
+			auto l = dis(g);
+			auto r = dis(g);
+			if(l == r)
+				r = (r+1)%working_cpy.size();
+
+            int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+			Operator::swap_slides(working_cpy, l, r);
+            int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+            int diff = after - before;
+			if(acceptMove(i,working_cpy.size(),diff)){
+				cur_value += diff;
+				cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
+				continue;
+			}
+			Operator::swap_slides(working_cpy, l, r);
+
+			if(slides.second.size() == 0)
+				continue;
+
+
+            auto vert_i = vert_dis(g);
+            auto vert_j = vert_dis(g);
+
+            l = slides.second[vert_i]->index;
+            r = slides.second[vert_j]->index;
+
+            before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+            Operator::swap_verticals(slides.second, vert_i, vert_j);
+            after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+            diff = after - before;
+			if(acceptMove(i,working_cpy.size(),diff)){
+				cur_value += diff;
+				cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
+				continue;
+			}
+            Operator::swap_verticals(slides.second, vert_i, vert_j);
+		}
+
+        return working_cpy;
+}
+    
+
+
+
 int main(){
 
 		srand(time(nullptr));
         for(int i=1; i<2; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
-                auto after = hill_climb(before);
+                auto after = simulated_annealing(before);
                 cout << "After: " << evaluation(after) << endl;
         }
         return 0;
