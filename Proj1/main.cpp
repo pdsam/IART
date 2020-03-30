@@ -421,13 +421,65 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides) {
 }
 
 int main(){
+        cout << "Welcome to algoritmator 3000." << endl;
 
+        static const string problems[] = {
+            "1 : example - Simple problem.",
+            "2 : lovely_landscapes - Only horizontal pictures.",
+            "3 : memorable_moments - Mixed vertical and horizontal.",
+            "4 : pet_pictures - Mixed but bigger.",
+            "5 : shiny_selfies - Only vertical pictures."};
+
+        cout << "\nChoose a problem:\n"; 
+
+        for (const string& s: problems) {
+            cout << "\t" << s << endl;
+        }
+
+        int problem;
+        cout << "\nChoice: ";
+        cin >> problem;
+
+        const string algorithms[] = {
+            "1 - Hill climb", 
+            "2 - Simulated Annealing", 
+            "3 - Tabu Search", 
+            "4 - Genetic Algorithm"};
+
+        cout << "\nChoose an algorithm:\n";
+        for (const string& s: algorithms) {
+            cout << "\t" << s << endl;
+        }
+
+        int algo;
+        cout << "\nChoice: ";
+        cin >> algo;
+
+        auto before = loadInput(problem-1);
+        switch(algo) {
+            case 1:
+                hill_climb(before);
+                break;
+            case 2:
+                //annealing
+                break;
+            case 3:
+                tabu_search(before);
+                break;
+            case 4:
+                //genetic
+                break;
+            default:
+                cout << "Invalid choice." << endl;
+        }
+
+        /*
 		srand(time(nullptr));
         for(int i=3; i<4; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
                 auto after = tabu_search(before);
                 cout << "After: " << evaluation(after) << endl;
-        }
+        }*/
         return 0;
 }
