@@ -63,7 +63,7 @@ struct Slide{
 typedef vector<Slide*> SlideShow;
 
 
-pair<SlideShow, SlideShow> loadInput(int input)
+pair<SlideShow, SlideShow> load_input(int input)
 {
     SlideShow slideshow;
         vector<Image*> vertical_photos;
@@ -136,6 +136,13 @@ pair<SlideShow, SlideShow> loadInput(int input)
     for(auto &element : slideshow)
         element->do_tags();
 
+	random_device rd;
+	shuffle(slideshow.begin(), slideshow.end(), mt19937(rd()));
+
+	size_t i = 0;
+	for_each(slideshow.begin(), slideshow.end(), [&i](auto s) {
+				s->index=i++;
+			});
     return make_pair(slideshow, vertical_slides);
 }
 
@@ -265,15 +272,9 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 	std::random_device rd;
 	std::mt19937 g(rd());
 
-	 shuffle(working_cpy.begin(), working_cpy.end(), g);
-
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	size_t i = 0;
-	for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
-				s->index=i++;
-			});
 
 	auto cur_value = evaluation(working_cpy);
 	cout << working_cpy.size() << "\n";
@@ -323,7 +324,7 @@ long calculate_hash(const SlideShow &slideshow, int start_index){
 
 	long res = 0;
 	for(auto i = 0; i<16 && start_index+i<slideshow.size(); i++){
-		unsigned cur = 0;
+		long cur = 0;
 		cur = reinterpret_cast<long>(&slideshow[i+start_index]);
 
 		
@@ -358,11 +359,6 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
-
-	size_t i = 0;
-	for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
-				s->index=i++;
-			});
 
 	cout << working_cpy.size() << "\n";
 
@@ -464,6 +460,20 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 	return working_cpy;
 }
 
+unsigned average_per_group(const SlideShow &slideshow, int start_index){
+
+	unsigned res = 0;
+	for(auto i = 0; i<16 && start_index+i<slideshow.size(); i++){
+		unsigned cur = 0;
+	}
+
+	return res;
+}
+SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
+
+	return slideshow
+}
+
 
 int main(){
         cout << "Welcome to algoritmator 3000." << endl;
@@ -500,7 +510,7 @@ int main(){
         cout << "\nChoice: ";
         cin >> algo;
 
-        auto before = loadInput(problem-1);
+        auto before = load_input(problem-1);
         switch(algo) {
             case 1:
                 climb_with_heuristic(before, accept_move_hill_climb);
