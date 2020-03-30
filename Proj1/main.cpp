@@ -231,64 +231,9 @@ int calc_around_slide(SlideShow& slideshow, int i) {
     return sum;
 }
 
-SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
+bool accept_move_hill_climb(int unused, int unused2, int delta){
 
-        SlideShow working_cpy(slides.first);
-
-		std::random_device rd;
-		std::mt19937 g(rd());
-
-		shuffle(working_cpy.begin(), working_cpy.end(), g);
-
-		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
-		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
-
-        size_t i = 0;
-        for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
-                    s->index=i++;
-                });
-
-		auto cur_value = evaluation(working_cpy);
-		for(int i = 0; i<working_cpy.size(); i++){
-			auto l = dis(g);
-			auto r = dis(g);
-			if(l == r)
-				r = (r+1)%working_cpy.size();
-
-            int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-			Operator::swap_slides(working_cpy, l, r);
-            int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-            int diff = after - before;
-			if(diff > 0){
-				cur_value += diff;
-				cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
-				continue;
-			}
-			Operator::swap_slides(working_cpy, l, r);
-
-			if(slides.second.size() == 0)
-				continue;
-
-
-            auto vert_i = vert_dis(g);
-            auto vert_j = vert_dis(g);
-
-            l = slides.second[vert_i]->index;
-            r = slides.second[vert_j]->index;
-
-            before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-            Operator::swap_verticals(slides.second, vert_i, vert_j);
-            after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-            diff = after - before;
-			if(diff > 0){
-				cur_value += diff;
-				cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
-				continue;
-			}
-            Operator::swap_verticals(slides.second, vert_i, vert_j);
-		}
-
-        return working_cpy;
+	return delta > 0;
 }
 
 inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
@@ -306,70 +251,65 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
 }
 
 
-SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<void(int, int, int)> f_add_display){
-	return slides.first;
-}
-
-SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
+SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool(int, int, int)> accept_func){
     SlideShow working_cpy(slides.first);
 
-		std::random_device rd;
-		std::mt19937 g(rd());
+	std::random_device rd;
+	std::mt19937 g(rd());
 
-		 shuffle(working_cpy.begin(), working_cpy.end(), g);
+	 shuffle(working_cpy.begin(), working_cpy.end(), g);
 
-		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
-		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
+	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-        size_t i = 0;
-        for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
-                    s->index=i++;
-                });
+	size_t i = 0;
+	for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
+				s->index=i++;
+			});
 
-		auto cur_value = evaluation(working_cpy);
-        cout << working_cpy.size() << "\n";
-		for(int i = 0; i<working_cpy.size(); i++){
-			auto l = dis(g);
-			auto r = dis(g);
-			if(l == r)
-				r = (r+1)%working_cpy.size();
+	auto cur_value = evaluation(working_cpy);
+	cout << working_cpy.size() << "\n";
+	for(int i = 0; i<working_cpy.size(); i++){
+		auto l = dis(g);
+		auto r = dis(g);
+		if(l == r)
+			r = (r+1)%working_cpy.size();
 
-            int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-			Operator::swap_slides(working_cpy, l, r);
-            int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-            int diff = after - before;
-			if(accept_move_annealing(i,working_cpy.size(),diff)){
-				cur_value += diff;
-				cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
-				continue;
-			}
-			Operator::swap_slides(working_cpy, l, r);
-
-			if(slides.second.size() == 0)
-				continue;
-
-
-            auto vert_i = vert_dis(g);
-            auto vert_j = vert_dis(g);
-
-            l = slides.second[vert_i]->index;
-            r = slides.second[vert_j]->index;
-
-            before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-            Operator::swap_verticals(slides.second, vert_i, vert_j);
-            after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-            diff = after - before;
-			if(accept_move_annealing(i,working_cpy.size(),diff)){
-				cur_value += diff;
-				cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
-				continue;
-			}
-            Operator::swap_verticals(slides.second, vert_i, vert_j);
+		int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+		Operator::swap_slides(working_cpy, l, r);
+		int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+		int diff = after - before;
+		if(accept_func(i,working_cpy.size(),diff)){
+			cur_value += diff;
+			cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
+			continue;
 		}
+		Operator::swap_slides(working_cpy, l, r);
 
-        return working_cpy;
+		if(slides.second.size() == 0)
+			continue;
+
+
+		auto vert_i = vert_dis(g);
+		auto vert_j = vert_dis(g);
+
+		l = slides.second[vert_i]->index;
+		r = slides.second[vert_j]->index;
+
+		before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+		Operator::swap_verticals(slides.second, vert_i, vert_j);
+		after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+		diff = after - before;
+		if(accept_func(i,working_cpy.size(),diff)){
+			cur_value += diff;
+			cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
+			continue;
+		}
+		Operator::swap_verticals(slides.second, vert_i, vert_j);
+	}
+
+	return working_cpy;
 }
-    
 
 SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
     SlideShow working_cpy(slides.first);
@@ -438,8 +378,10 @@ int main(){
         for(int i=1; i<2; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
-                auto after = simulated_annealing(before);
-                cout << "After: " << evaluation(after) << endl;
+                auto after = climb_with_heuristic(before, accept_move_annealing);
+                cout << "After Annealing: " << evaluation(after) << endl;
+                after = climb_with_heuristic(before, accept_move_hill_climb);
+                cout << "After Hill Climb: " << evaluation(after) << endl;
         }
         return 0;
 }
