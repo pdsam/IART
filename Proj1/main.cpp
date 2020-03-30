@@ -237,7 +237,7 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
 		std::random_device rd;
 		std::mt19937 g(rd());
 
-		 (working_cpy.begin(), working_cpy.end(), g);
+		 shuffle(working_cpy.begin(), working_cpy.end(), g);
 
 		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
@@ -311,7 +311,7 @@ SlideShow simulated_annealing(pair<SlideShow, SlideShow> &slides){
 		std::random_device rd;
 		std::mt19937 g(rd());
 
-		 (working_cpy.begin(), working_cpy.end(), g);
+		 shuffle(working_cpy.begin(), working_cpy.end(), g);
 
 		std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 		std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
