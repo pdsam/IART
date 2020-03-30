@@ -3,6 +3,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <list>
 #include <unordered_set>
 #include <set>
 #include <map>
@@ -352,8 +353,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 	std::random_device rd;
 	std::mt19937 g(rd());
 
-	auto hashes = block_hash(working_cpy);
-	vector<pair<unsigned, vector<long>>> tabu_list;
+	auto cur_hash = block_hash(working_cpy);
+	list<pair<unsigned, vector<long>>> tabu_list;
 
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
@@ -416,8 +417,39 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 
 		operator_order.push_back(get<1>(cur_op));
 		operator_order[operator_order.size()-1]();
+		auto cur_op_hash(cur_hash);
+		auto left_block = get<2>(cur_op)/16;
+		auto right_block = get<3>(cur_op)/16;
+
+		cur_op_hash[left_block] = calculate_hash(working_cpy, left_block*16);
+		if(left_block != right_block){
+			cur_op_hash[right_block] = calculate_hash(working_cpy, right_block*16);
+		}
+
+		bool failed = false;
+		for(auto &entry : tabu_list){
+			if(entry.first != get<0>(cur_op))
+				continue;
+
+			if(cur_op_hash == cur_hash){
+				operator_order[operator_order.size()-1]();
+				operator_order.pop_back();
+				failed=true;
+				break;
+			}
+		}
+		
+		if(failed)
+			continue;
+
 		if(cur_value < get<0>(cur_op)){
 			best_index = operator_order.size()-1;
+			tabu_list.push_back(make_pair(cur_value, cur_hash));
+
+			while(tabu_list.size() > 100)
+				tabu_list.pop_front();
+
+			cur_hash = cur_op_hash;
 			cur_value = get<0>(cur_op);
 			cout << "Found better one " << cur_value << " " << i << endl;
 		}
