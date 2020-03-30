@@ -372,6 +372,58 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 }
 
 
+
+typedef vector<int> Chromossome;
+typedef vector<Chromossome> Population;
+
+SlideShow genetic(int size_generated, int size_survivors, int max_iterations, pair<SlideShow, SlideShow> &slides, double mutation_percentage){
+    Population population;
+    Chromossome base(slides.first.size());    
+    std::random_device rd;
+	std::mt19937 g(rd());
+
+    iota(begin(base),end(base),0);
+    for(int i = 0; i < size_survivors;++i){
+
+        Chromossome seeder = base;
+        shuffle(seeder.begin(), seeder.end(), g);
+        population.push_back(seeder);
+    }
+
+    for(int i = 0; i < max_iterations; ++i){
+
+        while(size_generated > population.size()){
+
+            Chromossome offspring;
+            //picking parents
+            
+            
+
+            //picking crossover point
+            default_random_engine generator;
+            normal_distribution<int> distribution(offspring.size()/2, offspring.size/4);
+
+            int crossover_point = distribution(generator) % offspring.size();
+            
+            
+
+            
+
+            if(((double) rand() / (RAND_MAX)) < mutation_percentage / 100){
+
+                auto x = offspring.begin() + rand() % offspring.size();
+                auto y =offspring.begin() + rand() % offspring.size();
+
+                iter_swap(x,y);
+
+
+            }
+
+
+        }
+    }
+}
+
 int main(){
 
 		srand(time(nullptr));
