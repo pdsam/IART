@@ -290,13 +290,143 @@ SlideShow hill_climb(pair<SlideShow, SlideShow> &slides){
         return working_cpy;
 }
 
+namespace TabuTools {
+    struct Tabu {
+        vector<size_t> block_hashes;
+    };
+
+    const int hash_block_size = 1000;
+    const int max_tabu_limit = 1000000;
+
+    size_t calc_block_hash(SlideShow& slideshow, int block) {
+
+        size_t hash = 0;
+        int block_size = min((int)slideshow.size()-block*hash_block_size, hash_block_size);
+
+        auto hasher = std::hash<Image*>();
+        for (int j = 0; j < block_size; ++j) {
+            int index = block_size*block + j;
+            Slide* slide = slideshow[index];
+
+            hash ^= hasher(slide->image);
+
+            if (slide->is_vertical()){
+                hash ^= hasher(slide->vert_images[1]);
+            }
+        }
+
+        return hash;
+    }
+
+    void add_tabu(vector<Tabu>& tabus, SlideShow& slideshow) {
+
+        if (tabus.size() == max_tabu_limit) {
+            tabus.erase(tabus.begin());
+        }
+
+        Tabu tabu;
+        int num_blocks = ceil((float) slideshow.size() / hash_block_size);
+        for (int i = 0; i < num_blocks; ++i) {
+            tabu.block_hashes.push_back(calc_block_hash(slideshow, i));
+        }
+
+        tabus.push_back(move(tabu));
+    }
+
+    bool check_tabu(vector<Tabu>& tabus, SlideShow& slideshow, int i, int j) {
+        for (const Tabu& t: tabus) {
+
+            int lBlock = i/hash_block_size;
+            int rBlock = j/hash_block_size;
+
+            auto lHash = calc_block_hash(slideshow, lBlock);
+            auto rHash = calc_block_hash(slideshow, rBlock);
+
+            if (lHash == t.block_hashes[lBlock] && rHash == t.block_hashes[rBlock]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+void deep_copy(SlideShow& src, SlideShow& dest) {
+    for_each(src.begin(), src.end(), [&dest](auto slide){
+                Slide* n_slide = new Slide();
+                n_slide->image = slide->image;
+                if (slide ->is_vertical()) {
+                    n_slide->vert_images[1] = slide->vert_images[1];
+                }
+                n_slide->do_tags();
+                dest.push_back(n_slide);
+            });
+}
+
+SlideShow tabu_search(pair<SlideShow, SlideShow> &slides) {
+
+    SlideShow working_cpy;
+
+    deep_copy(slides.first, working_cpy);
+
+    vector<TabuTools::Tabu> tabu_list;
+    
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    //shuffle(working_cpy.begin(), working_cpy.end(), g);
+
+    std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+
+    SlideShow best = working_cpy;
+    int current_val = evaluation(best);
+    int working_val = current_val;
+    for(int i = 0; i < working_cpy.size(); ++i) {
+        int l;
+        int r;
+        int before;
+        int after;
+        while(true) {
+			l = dis(g);
+			r = dis(g);
+			if(l == r)
+				r = (r+1)%working_cpy.size();
+
+            before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+            Operator::swap_slides(working_cpy, l, r);
+            after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+
+            if (TabuTools::check_tabu(tabu_list, working_cpy, l, r)) {
+                Operator::swap_slides(working_cpy, l, r);
+            } else {
+                break;
+            }
+        }
+
+        Operator::swap_slides(working_cpy, l, r);
+        TabuTools::add_tabu(tabu_list, working_cpy);
+        Operator::swap_slides(working_cpy, l, r);
+
+        int diff = after - before;
+        working_val += diff;
+        printf("%d\n", working_val);
+        if (working_val > current_val) {
+            current_val = working_val;
+            best = working_cpy;
+            printf("NEW VALUE! %d %d\n", current_val, i);
+        }
+    }
+
+    return best;
+}
+
 int main(){
 
 		srand(time(nullptr));
-        for(int i=1; i<2; i++){
+        for(int i=3; i<4; i++){
                 auto before = loadInput(i);
                 cout << "Before: " << evaluation(before.first) << endl;
-                auto after = hill_climb(before);
+                auto after = tabu_search(before);
                 cout << "After: " << evaluation(after) << endl;
         }
         return 0;
