@@ -405,7 +405,7 @@ SlideShow genetic(int size_generated, int size_survivors, int max_iterations, pa
 
             int crossover_point = distribution(generator) % offspring.size();
             
-            
+            //doing crossover
 
             
 
