@@ -376,10 +376,13 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	operator_order.reserve(working_cpy.size());
 
 	auto cur_value = evaluation(working_cpy);
+	auto working_cpy_value = cur_value;
 	int best_index = -1;
+
 	for(int i = 0; i<num_iter; i++){
 
 		tuple<unsigned, function<SlideShow()>, int, int> cur_op = make_tuple(0, nullptr, 0, 0);
+		string cur_op_str;
 		for(auto i=0;i<10;i++){
 
 			bool horizontal_swap = (slides.second.size() == 0 ? true : (random() % 2 == 0));
@@ -396,8 +399,10 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value)
-					cur_op = make_tuple(cur_value + (after - before), operation, l, r);
+				if(get<0>(cur_op) < (after - before)+cur_value){
+					cur_op = make_tuple(working_cpy_value + (after - before), operation, l, r);
+				}
+
 			}
 			else{
 				auto vert_i = vert_dis(g);
@@ -406,14 +411,17 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				auto l = slides.second[vert_i]->index;
 				auto r = slides.second[vert_j]->index;
 
-				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, random()%2, random()%2);
+				auto index_one = random()%2;
+				auto index_two = random()%2;
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, index_one, index_two);
 				auto before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value)
-					cur_op = make_tuple(cur_value + after - before, operation, l, r);
+				if(get<0>(cur_op) < (after - before)+cur_value){
+					cur_op = make_tuple(working_cpy_value + after - before, operation, l, r);
+				}
 			}
 
 		}
@@ -438,6 +446,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				continue;
 
 			if(cur_op_hash == cur_hash){
+				cout << "Removing" << endl;
 				operator_order[operator_order.size()-1]();
 				operator_order.pop_back();
 				failed=true;
@@ -448,7 +457,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 		if(failed)
 			continue;
 
-		if(cur_value < get<0>(cur_op)){
+		working_cpy_value = get<0>(cur_op);
+		if(cur_value < working_cpy_value){
 			best_index = operator_order.size()-1;
 			tabu_list.push_back(make_pair(cur_value, cur_hash));
 
@@ -456,9 +466,10 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				tabu_list.pop_front();
 
 			cur_hash = cur_op_hash;
-			cur_value = get<0>(cur_op);
-			cout << "Found better one " << cur_value << " " << i << endl;
+			cur_value = working_cpy_value;
 		}
+		//middle_values.push_back(get<0>(cur_op));
+		//middle_strings.push_back(cur_op_str);
 	}
 
 	for(auto it=operator_order.rbegin(); it!=operator_order.rend(); it++)
@@ -467,6 +478,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	for(auto i=0;i<=best_index;i++)
 		operator_order[i]();
 
+	if(cur_value != evaluation(working_cpy))
+		cout << "Invalid" << endl;
 	return working_cpy;
 }
 
@@ -698,6 +711,7 @@ int main(){
             int num_iter;
             cout << "Enter the number of max iterations: ";
             cin >> num_iter;
+			cout << "Initial value: " << evaluation(before.first) << endl;
 
             chrono::time_point<chrono::high_resolution_clock> start;
             switch(algo) {
