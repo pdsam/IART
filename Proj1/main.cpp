@@ -473,7 +473,6 @@ typedef vector<tuple<function<SlideShow()>, int, int>> Chromossome;
 namespace Crossover{
 
 	Chromossome one_point(const Chromossome &l, const Chromossome &r, unsigned point){
-
 		Chromossome new_chromo;
 		new_chromo.reserve(l.size());
 
@@ -483,6 +482,35 @@ namespace Crossover{
 		return new_chromo;
 	}
 
+	Chromossome two_point(const Chromossome &l, const Chromossome &r, unsigned point_uno, unsigned point_duo){
+		Chromossome new_chromo;
+		new_chromo.reserve(l.size());
+
+		new_chromo.insert(new_chromo.begin(), l.begin(), l.begin()+point_uno);
+		new_chromo.insert(new_chromo.end(), r.begin()+point_uno, r.begin()+point_duo);
+		new_chromo.insert(new_chromo.end(), l.begin()+point_duo, l.end());
+
+		return new_chromo;
+	}
+
+	Chromossome uniform(const Chromossome &l, const Chromossome &r){
+		Chromossome new_chromo;
+		new_chromo.reserve(l.size());
+
+		auto it_one = l.begin();
+		auto it_two = r.begin();
+		for(auto i=0;i<new_chromo.capacity();i++){
+			if(random()%2){
+				new_chromo.push_back(*(it_one+i));
+			}
+			else{
+				new_chromo.push_back(*(it_two+i));
+
+			}
+		}
+
+		return new_chromo;
+	}
 };
 
 
@@ -502,14 +530,19 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	for(auto i=0;i<10;i++){
 		current_gen.push_back(Chromossome());
 		for(auto j=0;j<max_chromossome_size;j++){
-			auto l = dis(g);
-			auto r = dis(g);
-			if(l == r)
-				r = (r+1)%working_cpy.size();
 
-			auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
-			current_gen[i].push_back(make_tuple(operation, l, r));
-
+			if(random()%11 > 6){
+				auto l = vert_dis(g);
+				auto r = vert_dis(g);
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), l, r, random()%2, random()%2);
+				current_gen[i].push_back(make_tuple(operation, l, r));
+			}
+			else{
+				auto l = dis(g);
+				auto r = dis(g);
+				auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
+				current_gen[i].push_back(make_tuple(operation, l, r));
+			}
 		}
 
 	}
@@ -531,7 +564,42 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 			if(l == r)
 				r = (r+1)%current_gen.size();
 
-			next_gen.push_back(Crossover::one_point(current_gen[l], current_gen[r], chrom_dis(g)));
+			auto p1 = chrom_dis(g);
+			auto p2 = chrom_dis(g);
+			switch(random()%3){
+				case 0:
+					next_gen.push_back(Crossover::one_point(current_gen[l], current_gen[r], chrom_dis(g)));
+					break;
+				case 1:
+					while(p1==p2)
+						p2 = chrom_dis(g);
+
+					next_gen.push_back(Crossover::two_point(current_gen[l], current_gen[r], min(p1,p2), max(p1,p2)));
+					break;
+				case 2:
+					next_gen.push_back(Crossover::uniform(current_gen[l], current_gen[r]));
+					break;
+			}
+
+			if(random()%100 > 95){
+				auto &last_chromo = next_gen[next_gen.size()-1];
+				if(random()%2){
+					auto n_l = vert_dis(g);
+					auto n_r = vert_dis(g);
+					auto operation = bind(Operator::swap_verticals, ref(slides.second), n_l, n_r, random()%2, random()%2);
+
+					last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+
+				}
+				else{
+					auto n_l = dis(g);
+					auto n_r = dis(g);
+					auto operation = bind(Operator::swap_slides, ref(working_cpy), n_l, n_r);
+					last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+				}
+
+			}
+
 		}
 
 
@@ -639,13 +707,5 @@ int main(){
                 cout << "Invalid choice." << endl;
         }
 
-        /*
-		srand(time(nullptr));
-        for(int i=3; i<4; i++){
-                auto before = loadInput(i);
-                cout << "Before: " << evaluation(before.first) << endl;
-                auto after = tabu_search(before);
-                cout << "After: " << evaluation(after) << endl;
-        }*/
         return 0;
 }
