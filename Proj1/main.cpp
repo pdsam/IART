@@ -259,13 +259,13 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
     else if(delta == 0){return false;}
 
     else{
-        cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
+        //cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
         bool accepted = ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
         if(accepted){
-            cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
+            //cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
         }
         else{
-            cout << "\tWorse Move not accepted\n";
+            //cout << "\tWorse Move not accepted\n";
         }
         return  accepted;
 
@@ -284,7 +284,7 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 
 
 	auto cur_value = evaluation(working_cpy);
-	cout << working_cpy.size() << "\n";
+	//cout << working_cpy.size() << "\n";
 	for(int i = 0; i<num_iter; i++){
 		auto l = dis(g);
 		auto r = dis(g);
@@ -297,7 +297,7 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		int diff = after - before;
 		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
-			cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
+			//cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
 		}
 		Operator::swap_slides(working_cpy, l, r);
@@ -321,7 +321,7 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		diff = after - before;
 		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
-			cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
+			//cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
 		}
 		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
@@ -370,7 +370,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	cout << working_cpy.size() << "\n";
+	//cout << working_cpy.size() << "\n";
 
 	vector<function<SlideShow()>> operator_order;
 	operator_order.reserve(working_cpy.size());
@@ -399,7 +399,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value){
+				if(get<0>(cur_op) < (after - before)+working_cpy_value){
 					cur_op = make_tuple(working_cpy_value + (after - before), operation, l, r);
 				}
 
@@ -419,7 +419,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value){
+				if(get<0>(cur_op) < (after - before)+working_cpy_value){
 					cur_op = make_tuple(working_cpy_value + after - before, operation, l, r);
 				}
 			}
@@ -446,7 +446,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				continue;
 
 			if(cur_op_hash == entry.second){
-				cout << "Removing" << endl;
+				//cout << "Removing" << endl;
 				operator_order[operator_order.size()-1]();
 				operator_order.pop_back();
 				failed=true;
@@ -478,8 +478,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	for(auto i=0;i<=best_index;i++)
 		operator_order[i]();
 
-	if(cur_value != evaluation(working_cpy))
-		cout << "Invalid" << endl;
+	//if(cur_value != evaluation(working_cpy))
+		//cout << "Invalid" << endl;
 	return working_cpy;
 }
 
@@ -573,7 +573,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	std::uniform_int_distribution<> mutation_chance(0, 99);
 	for(auto i=0;i<50;i++){
 		next_gen.clear();
-		cout << next_gen.size() << " " << next_gen.capacity() << endl;
+		//cout << next_gen.size() << " " << next_gen.capacity() << endl;
 		while(next_gen.size() != next_gen.capacity()){
 			auto l = gen_dist(g);
 			auto r = gen_dist(g);
@@ -653,7 +653,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 
 		if(best_ans_value < results[0].first){
 			best_ans_value = results[0].first;
-			cout << "Found new best! Delta: " << best_ans_value << endl;
+			//cout << "Found new best! Delta: " << best_ans_value << endl;
 			best_ans.clear();
 			auto &replacer = next_gen[results[0].second];
 			best_ans.insert(best_ans.begin(), replacer.begin(), replacer.end());
