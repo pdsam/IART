@@ -445,7 +445,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 			if(entry.first != get<0>(cur_op))
 				continue;
 
-			if(cur_op_hash == cur_hash){
+			if(cur_op_hash == entry.second){
 				cout << "Removing" << endl;
 				operator_order[operator_order.size()-1]();
 				operator_order.pop_back();
