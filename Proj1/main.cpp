@@ -528,7 +528,7 @@ namespace Crossover{
 };
 
 
-SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
+SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides, int num_iter, unsigned chromo_size){
 
 	SlideShow working_cpy(slides.first);
 
@@ -537,7 +537,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	const unsigned max_chromossome_size = 8000;
+	const unsigned max_chromossome_size = chromo_size;
 	std::uniform_int_distribution<> chrom_dis(0, max_chromossome_size);
 
 	vector<Chromossome> current_gen;
@@ -571,7 +571,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	Chromossome best_ans;
 	best_ans.reserve(max_chromossome_size);
 	std::uniform_int_distribution<> mutation_chance(0, 99);
-	for(auto i=0;i<50;i++){
+	for(auto i=0;i<num_iter;i++){
 		next_gen.clear();
 		//cout << next_gen.size() << " " << next_gen.capacity() << endl;
 		while(next_gen.size() != next_gen.capacity()){
@@ -669,6 +669,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 
 
 int main(){
+
         cout << "Welcome to algoritmator 3000." << endl;
 
         static const string problems[] = {
@@ -734,8 +735,11 @@ int main(){
                     break;
                 }
                 case 4: {
+                    unsigned chromo_size;
+                    cout << "Enter a chromossome size: ";
+                    cin >> chromo_size;
                     start = chrono::high_resolution_clock::now();
-                    //after = genetic
+					after = genetic_algorithm(before, num_iter, chromo_size);
                     break;
                 }
                 default: {
