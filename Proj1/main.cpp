@@ -43,7 +43,7 @@ struct Slide{
                 return image->orientation == V;
         }
 
-		void do_tags(){
+        void do_tags(){
 			all_tags.clear();
 			all_tags.insert(vert_images[0]->tags.begin(), vert_images[0]->tags.end());
 			if(!is_vertical()){
@@ -218,6 +218,9 @@ namespace Operator{
 };
 
 
+/**
+ * Calculate the score obtained score obtained from the transition between two different slides
+ */
 int calculate_trasition(Slide* left, Slide* right) {
     auto left_tags = left->get_tags();
     auto right_tags = right->get_tags();
@@ -233,6 +236,11 @@ int calculate_trasition(Slide* left, Slide* right) {
     return min(left->number_tags()-common_tags, min(common_tags, right->number_tags()-common_tags));
 }
 
+/**
+ * Calculate the score of the transitions between a slide and the surrounding slides.
+ * slideshow - slideshow in which the slide is inserted
+ * i - index of the slide in the slideshow
+ */
 int calc_around_slide(SlideShow& slideshow, int i) {
     int sum = 0;
 
@@ -247,35 +255,47 @@ int calc_around_slide(SlideShow& slideshow, int i) {
     return sum;
 }
 
+/**
+ * Function used by climb_with_heuristic to check wether to accept a change to the current state.
+ *
+ * If this is used,  climb_with_heuristic turns into a hill climb algorithm
+ */
 bool accept_move_hill_climb(int unused, int unused2, int delta){
 
 	return delta > 0;
 }
 
+/**
+ * Function used by climb_with_heuristic to check wether to accept a change to the current state.
+ *
+ * If this is used, climb_with_heuristic turns into a simulated annealing algorithm
+ */
 inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
     if(delta >0){
         return true;
     }
-    else if(delta == 0){return false;}
-
+    else if(delta == 0){
+        return false;
+    }
     else{
-        //cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
-        bool accepted = ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
-        if(accepted){
-            //cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
-        }
-        else{
-            //cout << "\tWorse Move not accepted\n";
-        }
-        return  accepted;
-
+        return ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
     }
 }
 
 
+/**
+ * General purpose climbing algorithm, uses accept_func as logic to decide wether to accept
+ * a neighbour.
+ *
+ * if accept_func = accept_move_hill_climb, this turns into a hill climb algorithm
+ *
+ * if accept_func = accept_move_annealing, this turns into a simulated annealing algorithm
+ *
+ */
 SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool(int, int, int)> accept_func, int num_iter){
     SlideShow working_cpy(slides.first);
 
+    //Random number generators for neighbour generation
 	std::random_device rd;
 	std::mt19937 g(rd());
 
@@ -284,27 +304,39 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 
 
 	auto cur_value = evaluation(working_cpy);
-	//cout << working_cpy.size() << "\n";
+    cout << "\rCurrent Score: " << cur_value << flush;
 	for(int i = 0; i<num_iter; i++){
+
 		auto l = dis(g);
 		auto r = dis(g);
 		if(l == r)
 			r = (r+1)%working_cpy.size();
 
+        //First try to switch two slides' positions
+        //Get score before operator application
 		int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+        //Apply operator
 		Operator::swap_slides(working_cpy, l, r);
+        //Get score after operator application
 		int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+
+        //Calculate delta in score caused by operator
 		int diff = after - before;
+
+        //Check wether to accept neighbour
 		if(accept_func(i, num_iter, diff)){
+            //If it is accepted update current score
 			cur_value += diff;
-			//cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
+            cout << "\rCurrent Score: " << cur_value << flush;
 			continue;
 		}
+        //Else revert operator and try to permutate slides with vertical photos
 		Operator::swap_slides(working_cpy, l, r);
 
 		if(slides.second.size() == 0)
 			continue;
 
+        //Same logic
 
 		auto vert_i = vert_dis(g);
 		auto vert_j = vert_dis(g);
@@ -321,11 +353,13 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		diff = after - before;
 		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
-			//cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
+            cout << "\rCurrent Score: " << cur_value << flush;
 			continue;
 		}
 		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
 	}
+
+    cout << endl;
 
 	return working_cpy;
 }
@@ -361,17 +395,20 @@ vector<long> block_hash(const SlideShow &slideshow){
 SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu_list_size){
     SlideShow working_cpy(slides.first);
 
+    // Random number generators for neighbour generation
 	std::random_device rd;
 	std::mt19937 g(rd());
-
-	auto cur_hash = block_hash(working_cpy);
-	list<pair<unsigned, vector<long>>> tabu_list;
 
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	//cout << working_cpy.size() << "\n";
 
+	auto cur_hash = block_hash(working_cpy);
+
+    // Tabu list
+	list<pair<unsigned, vector<long>>> tabu_list;
+
+    // Audit of state of problem
 	vector<function<SlideShow()>> operator_order;
 	operator_order.reserve(working_cpy.size());
 
@@ -379,8 +416,10 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	auto working_cpy_value = cur_value;
 	int best_index = -1;
 
+    cout << "\rCurrent Score: " << cur_value << flush;
 	for(int i = 0; i<num_iter; i++){
 
+        // Generate 10 random neighbours, choose the best one
 		tuple<unsigned, function<SlideShow()>, int, int> cur_op = make_tuple(0, nullptr, 0, 0);
 		string cur_op_str;
 		for(auto i=0;i<10;i++){
@@ -440,6 +479,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 			cur_op_hash[right_block] = calculate_hash(working_cpy, right_block*16);
 		}
 
+        //Check if neighbour is tabu
 		bool failed = false;
 		for(auto &entry : tabu_list){
 			if(entry.first != get<0>(cur_op))
@@ -457,6 +497,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 		if(failed)
 			continue;
 
+        // Verify if there is an improvement in the current score. If there is,
+        // update it.
 		working_cpy_value = get<0>(cur_op);
 		if(cur_value < working_cpy_value){
 			best_index = operator_order.size()-1;
@@ -467,6 +509,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 
 			cur_hash = cur_op_hash;
 			cur_value = working_cpy_value;
+            cout << "\rCurrent Score: " << cur_value << flush;
 		}
 		//middle_values.push_back(get<0>(cur_op));
 		//middle_strings.push_back(cur_op_str);
@@ -480,6 +523,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 
 	//if(cur_value != evaluation(working_cpy))
 		//cout << "Invalid" << endl;
+    cout << endl;
 	return working_cpy;
 }
 
@@ -653,7 +697,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides, int num_iter, un
 
 		if(best_ans_value < results[0].first){
 			best_ans_value = results[0].first;
-			//cout << "Found new best! Delta: " << best_ans_value << endl;
+            cout << "\rCurrent Score: " << best_ans_value << flush;
 			best_ans.clear();
 			auto &replacer = next_gen[results[0].second];
 			best_ans.insert(best_ans.begin(), replacer.begin(), replacer.end());
@@ -663,6 +707,8 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides, int num_iter, un
 
 	for(const auto &operation : best_ans)
 		get<0>(operation)();
+
+    cout << endl;
 
 	return working_cpy;
 }
