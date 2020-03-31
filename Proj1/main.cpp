@@ -778,11 +778,11 @@ int main(){
         cout << "Welcome to algoritmator 3000." << endl;
 
         static const string problems[] = {
-            "1 : example - Simple problem.",
-            "2 : lovely_landscapes - Only horizontal pictures.",
-            "3 : memorable_moments - Mixed vertical and horizontal.",
-            "4 : pet_pictures - Mixed but bigger.",
-            "5 : shiny_selfies - Only vertical pictures."};
+            "0 : example - Simple problem.",
+            "1 : lovely_landscapes - Only horizontal pictures.",
+            "2 : memorable_moments - Mixed vertical and horizontal.",
+            "3 : pet_pictures - Mixed but bigger.",
+            "4 : shiny_selfies - Only vertical pictures."};
 
         cout << "\nChoose a problem:\n"; 
 
@@ -795,7 +795,7 @@ int main(){
             cout << "\nChoice: ";
             cin >> problem;
 
-            if (problem > 0 && problem < 6) {
+            if (problem > -1 && problem < 5) {
                 break;
             } else {
                 cout << "Invalid choice" << endl;
@@ -826,7 +826,7 @@ int main(){
                 }
             }
 
-            auto before = load_input(problem-1);
+            auto before = load_input(problem);
             SlideShow after;
 
 

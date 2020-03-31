@@ -2,6 +2,9 @@
 == Para compilar ==
 ===================
 
+Certificar-se que existe a pasta ./bin/
+Se nao existir, criar um novo.
+
 Correr: make release
 
 
