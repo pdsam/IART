@@ -28,6 +28,8 @@ struct Image
 
     //Set of tags that the image possesses
     set<int> tags;
+
+    unsigned id;
 };
 
 
@@ -93,12 +95,15 @@ pair<SlideShow, SlideShow> load_input(int input)
     getline(file, line);
 	map<string,int> simplifier;
 	auto counter = 0;
+    unsigned curr_id = 0;
 	while (getline(file, line))
     {
         string orientation;
 		int	number_tags;
 
         Image *image = new Image();
+        image->id = curr_id;
+        curr_id++;
         istringstream iss(line);
         iss >> orientation;
 		iss >> number_tags;
@@ -786,8 +791,16 @@ int main(){
         }
 
         int problem;
-        cout << "\nChoice: ";
-        cin >> problem;
+        while(true) {
+            cout << "\nChoice: ";
+            cin >> problem;
+
+            if (problem > 0 && problem < 6) {
+                break;
+            } else {
+                cout << "Invalid choice" << endl;
+            }
+        }
 
         const string algorithms[] = {
             "1 - Hill climb", 
@@ -802,8 +815,16 @@ int main(){
             }
 
             int algo;
-            cout << "\nChoice: ";
-            cin >> algo;
+            while(true) {
+                cout << "\nChoice: ";
+                cin >> algo;
+
+                if (algo > 0 && algo < 5) {
+                    break;
+                } else {
+                    cout << "Invalid choice" << endl;
+                }
+            }
 
             auto before = load_input(problem-1);
             SlideShow after;
@@ -812,16 +833,17 @@ int main(){
             int num_iter;
             cout << "Enter the number of max iterations: ";
             cin >> num_iter;
-			cout << "Initial value: " << evaluation(before.first) << endl;
 
             chrono::time_point<chrono::high_resolution_clock> start;
             switch(algo) {
                 case 1: {
+                    cout << "Initial value: " << evaluation(before.first) << endl;
                     start = chrono::high_resolution_clock::now();
                     after = climb_with_heuristic(before, accept_move_hill_climb, num_iter);
                     break;
                 }
                 case 2: {
+                    cout << "Initial value: " << evaluation(before.first) << endl;
                     start = chrono::high_resolution_clock::now();
                     after = climb_with_heuristic(before, accept_move_annealing, num_iter);
                     break;
@@ -830,6 +852,7 @@ int main(){
                     int tabu_list_size;
                     cout << "Enter a max size for the tabu list: ";
                     cin >> tabu_list_size;
+                    cout << "Initial value: " << evaluation(before.first) << endl;
                     start = chrono::high_resolution_clock::now();
                     after = tabu_search(before, num_iter, tabu_list_size);
                     break;
@@ -838,6 +861,7 @@ int main(){
                     unsigned chromo_size;
                     cout << "Enter a chromossome size: ";
                     cin >> chromo_size;
+                    cout << "Initial value: " << evaluation(before.first) << endl;
                     start = chrono::high_resolution_clock::now();
 					after = genetic_algorithm(before, num_iter, chromo_size);
                     break;
@@ -850,10 +874,19 @@ int main(){
 
             auto end = chrono::high_resolution_clock::now();
 
+            for (Slide* s: after) {
+                cout << s->image->id;
+                if (s->is_vertical()) {
+                    cout << " " << s->vert_images[1]->id;
+                }
+
+                cout << endl;
+            }
+
             auto score = evaluation(after);
 
 
-            cout << "Score: " << score << endl;
+            cout << endl << "Score: " << score << endl;
             cout << "Time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << "ms" << endl;
 
             for (Slide* s: before.first) {
