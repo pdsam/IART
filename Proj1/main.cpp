@@ -25,24 +25,33 @@ enum Orientation
 struct Image
 {
     Orientation orientation;
+
+    //Set of tags that the image possesses
     set<int> tags;
 };
 
 
 struct Slide{
 
+        // Images in the slide
         union{
                 Image* image;
                 Image* vert_images[2];
         };
 
+        // Tags of the slide
 		unordered_set<int> all_tags;
+
+        // Index of the slide in the slide
         size_t index;
 
         bool is_vertical() {
                 return image->orientation == V;
         }
 
+        /**
+         * Update tags in the slide, must be called when the images of the slide are changed
+         */
         void do_tags(){
 			all_tags.clear();
 			all_tags.insert(vert_images[0]->tags.begin(), vert_images[0]->tags.end());
@@ -192,6 +201,9 @@ void print_slideshow(const SlideShow &slideshow){
 
 namespace Operator{
 
+        /**
+         * Swap two slides in the slideshow
+         */
         SlideShow swap_slides(SlideShow &slideshow, int i, int j){
                 if(i == j)
                         return slideshow;
@@ -203,6 +215,9 @@ namespace Operator{
                 return slideshow;
         }
 
+        /**
+         * Swap vertical images between two slides in a slideshow
+         */
         SlideShow swap_verticals(SlideShow &slideshow, int i, int j, int v_i, int v_j) {
             if (!slideshow[i]->is_vertical() || !slideshow[j]->is_vertical()) {
                 return slideshow;
@@ -364,6 +379,12 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 	return working_cpy;
 }
 
+
+/**
+ *
+ * Calculate the hash of a block in a slideshow starting at index start_index
+ *
+ */
 long calculate_hash(const SlideShow &slideshow, int start_index){
 
 	long res = 0;
@@ -382,6 +403,11 @@ long calculate_hash(const SlideShow &slideshow, int start_index){
 	return res;
 }
 
+/**
+ * Calculates the hash of a slideshow/state
+ *
+ * The hash is a vector of hashes of smaller block of the slideshow
+ */
 vector<long> block_hash(const SlideShow &slideshow){
 
 	vector<long> result;
@@ -405,15 +431,26 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 
 	auto cur_hash = block_hash(working_cpy);
 
-    // Tabu list
+    // Tabu list, a list of past states
+    // A list os pairs that contain the score of the state and a hash of the state
 	list<pair<unsigned, vector<long>>> tabu_list;
 
-    // Audit of state of problem
+    // List of modifications done to the state as the algorithm progresses.
+    // This lets us go to any state the solution was at at any point in the algorithms
+    // execution.
 	vector<function<SlideShow()>> operator_order;
 	operator_order.reserve(working_cpy.size());
 
+    // Current value of the best solution
 	auto cur_value = evaluation(working_cpy);
+
+    // Value of the current state
 	auto working_cpy_value = cur_value;
+
+    // Index of a modification in operator_order.
+    // If one begins with working_cpy in its initial state and applies
+    // all modifications in operator_order sequentially until the one 
+    // in index best_index, the resulting state is the best current solution.
 	int best_index = -1;
 
     cout << "\rCurrent Score: " << cur_value << flush;
@@ -424,26 +461,31 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 		string cur_op_str;
 		for(auto i=0;i<10;i++){
 
+            // Randomly choose between a vertical photos permutation and a horizontal slide swap
 			bool horizontal_swap = (slides.second.size() == 0 ? true : (random() % 2 == 0));
 
 			if(horizontal_swap){
+                // Generate indexes of slides to swap
 				auto l = dis(g);
 				auto r = dis(g);
 				if(l == r)
 					r = (r+1)%working_cpy.size();
 
+                // Create action and test its effect on the state
 				auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
 				int before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
+                // Check if it is better than the current one and replace it if it is.
 				if(get<0>(cur_op) < (after - before)+working_cpy_value){
 					cur_op = make_tuple(working_cpy_value + (after - before), operation, l, r);
 				}
 
 			}
 			else{
+                // Generate indexes of slides with vertical photos do switch
 				auto vert_i = vert_dis(g);
 				auto vert_j = vert_dis(g);
 
@@ -452,12 +494,15 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 
 				auto index_one = random()%2;
 				auto index_two = random()%2;
+
+                // Create action and test its effect on the state
 				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, index_one, index_two);
 				auto before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
+                // Check if it is better than the current one and replace it if it is.
 				if(get<0>(cur_op) < (after - before)+working_cpy_value){
 					cur_op = make_tuple(working_cpy_value + after - before, operation, l, r);
 				}
@@ -468,8 +513,11 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 		if(get<1>(cur_op) == nullptr)
 			continue;
 
+        // Add action to the list of audits and execute it
 		operator_order.push_back(get<1>(cur_op));
 		operator_order[operator_order.size()-1]();
+
+        // Generate hash of current state
 		auto cur_op_hash(cur_hash);
 		auto left_block = get<2>(cur_op)/16;
 		auto right_block = get<3>(cur_op)/16;
@@ -482,11 +530,13 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
         //Check if neighbour is tabu
 		bool failed = false;
 		for(auto &entry : tabu_list){
+            //Check if score of the current state is equal to the score in the tabu
 			if(entry.first != get<0>(cur_op))
 				continue;
 
+            // Compare hashes to see if current ste is tabu
 			if(cur_op_hash == entry.second){
-				//cout << "Removing" << endl;
+                // If it is, revert the action and remove it from the audits
 				operator_order[operator_order.size()-1]();
 				operator_order.pop_back();
 				failed=true;
@@ -494,6 +544,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 			}
 		}
 		
+        // If the state was tabu skip to the next iteration
 		if(failed)
 			continue;
 
@@ -501,9 +552,13 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
         // update it.
 		working_cpy_value = get<0>(cur_op);
 		if(cur_value < working_cpy_value){
+            // Save the index until which the best state is acquired
 			best_index = operator_order.size()-1;
+
+            // Push the state into the tabu list
 			tabu_list.push_back(make_pair(cur_value, cur_hash));
 
+            // Make sure its size doesn't exceed the limit
 			while(tabu_list.size() > tabu_list_size)
 				tabu_list.pop_front();
 
@@ -511,18 +566,17 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 			cur_value = working_cpy_value;
             cout << "\rCurrent Score: " << cur_value << flush;
 		}
-		//middle_values.push_back(get<0>(cur_op));
-		//middle_strings.push_back(cur_op_str);
 	}
 
+    // Return state to initial
 	for(auto it=operator_order.rbegin(); it!=operator_order.rend(); it++)
 		(*it)();
 
+    // Apply audits until the index that specifies the best score
+    // Succesfully reconstructing the solution
 	for(auto i=0;i<=best_index;i++)
 		operator_order[i]();
 
-	//if(cur_value != evaluation(working_cpy))
-		//cout << "Invalid" << endl;
     cout << endl;
 	return working_cpy;
 }
