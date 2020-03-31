@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <random>
 #include <ctime>
+#include <chrono>
 
 using namespace std;
 
@@ -259,7 +260,7 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
 }
 
 
-SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool(int, int, int)> accept_func){
+SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool(int, int, int)> accept_func, int num_iter){
     SlideShow working_cpy(slides.first);
 
 	std::random_device rd;
@@ -277,7 +278,7 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 
 	auto cur_value = evaluation(working_cpy);
 	cout << working_cpy.size() << "\n";
-	for(int i = 0; i<working_cpy.size(); i++){
+	for(int i = 0; i<num_iter; i++){
 		auto l = dis(g);
 		auto r = dis(g);
 		if(l == r)
@@ -347,7 +348,7 @@ vector<long> block_hash(const SlideShow &slideshow){
 	return result;
 }
 
-SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
+SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu_list_size){
     SlideShow working_cpy(slides.first);
 
 	std::random_device rd;
@@ -491,31 +492,59 @@ int main(){
             "3 - Tabu Search", 
             "4 - Genetic Algorithm"};
 
-        cout << "\nChoose an algorithm:\n";
-        for (const string& s: algorithms) {
-            cout << "\t" << s << endl;
-        }
+        while(true) {
+            cout << "\nChoose an algorithm:\n";
+            for (const string& s: algorithms) {
+                cout << "\t" << s << endl;
+            }
 
-        int algo;
-        cout << "\nChoice: ";
-        cin >> algo;
+            int algo;
+            cout << "\nChoice: ";
+            cin >> algo;
 
-        auto before = loadInput(problem-1);
-        switch(algo) {
-            case 1:
-                climb_with_heuristic(before, accept_move_hill_climb);
-                break;
-            case 2:
-                climb_with_heuristic(before, accept_move_annealing);
-                break;
-            case 3:
-                tabu_search(before);
-                break;
-            case 4:
-                //genetic
-                break;
-            default:
-                cout << "Invalid choice." << endl;
+            auto before = loadInput(problem-1);
+            SlideShow after;
+
+            auto start = chrono::high_resolution_clock::now();
+
+            int num_iter;
+            cout << "Enter the number of max iterations: ";
+            cin >> num_iter;
+
+            switch(algo) {
+                case 1: {
+                    after = climb_with_heuristic(before, accept_move_hill_climb, num_iter);
+                    break;
+                }
+                case 2: {
+                    after = climb_with_heuristic(before, accept_move_annealing, num_iter);
+                    break;
+                }
+                case 3: {
+                    int tabu_list_size;
+                    cout << "Enter a max size for the tabu list: ";
+                    cin >> tabu_list_size;
+                    after = tabu_search(before, num_iter, tabu_list_size);
+                    break;
+                }
+                case 4: {
+                    //after = genetic
+                    break;
+                }
+                default: {
+                    cout << "Invalid choice." << endl;
+                    continue;
+                }
+            }
+
+            auto end = chrono::high_resolution_clock::now();
+
+            auto score = evaluation(after);
+
+
+            cout << "Score: " << score << endl;
+            cout << "Time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << "ms" << endl;
+
         }
 
         /*
