@@ -259,7 +259,7 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
 
     else{
     cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
-      return  ((double) rand() / (RAND_MAX)) > exp(-delta/(maxIteration/(double)iteration));
+      return  ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
     }
 
 
