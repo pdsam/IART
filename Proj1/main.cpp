@@ -258,11 +258,17 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
     else if(delta == 0){return false;}
 
     else{
-    cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
-      return  ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
+        cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
+        bool accepted = ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
+        if(accepted){
+            cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
+        }
+        else{
+            cout << "\tWorse Move not accepted\n";
+        }
+        return  accepted;
+
     }
-
-
 }
 
 
@@ -611,18 +617,23 @@ int main(){
         cin >> algo;
 
         auto before = load_input(problem-1);
+        SlideShow after;
         switch(algo) {
             case 1:
-                climb_with_heuristic(before, accept_move_hill_climb);
+                after = climb_with_heuristic(before, accept_move_hill_climb);
+                cout<<"Final score: " << evaluation(after) << "\n";
                 break;
             case 2:
-                climb_with_heuristic(before, accept_move_annealing);
+                after = climb_with_heuristic(before, accept_move_annealing);
+                cout<<"Final score: " << evaluation(after) << "\n";
                 break;
             case 3:
-                tabu_search(before);
+                after = tabu_search(before);
+                cout<<"Final score: " << evaluation(after) << "\n";
                 break;
             case 4:
-		genetic_algorithm(before);
+		        after = genetic_algorithm(before);
+                cout<<"Final score: " << evaluation(after) << "\n";
                 break;
             default:
                 cout << "Invalid choice." << endl;
