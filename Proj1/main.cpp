@@ -664,6 +664,14 @@ int main(){
 
             cout << "Score: " << score << endl;
             cout << "Time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << "ms" << endl;
+
+            for (Slide* s: before.first) {
+                delete s->image;
+                if (s->is_vertical()) {
+                    delete s->vert_images[1];
+                }
+                delete s;
+            }
         }
 
         /*
