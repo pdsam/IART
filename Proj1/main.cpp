@@ -202,12 +202,12 @@ namespace Operator{
                 return slideshow;
         }
 
-        SlideShow swap_verticals(SlideShow &slideshow, int i, int j) {
+        SlideShow swap_verticals(SlideShow &slideshow, int i, int j, int v_i, int v_j) {
             if (!slideshow[i]->is_vertical() || !slideshow[j]->is_vertical()) {
                 return slideshow;
             }
 
-            swap(slideshow[i]->vert_images[1], slideshow[j]->vert_images[1]);
+            swap(slideshow[i]->vert_images[v_i], slideshow[j]->vert_images[v_j]);
             slideshow[i]->do_tags();
             slideshow[j]->do_tags();
 
@@ -305,8 +305,11 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		l = slides.second[vert_i]->index;
 		r = slides.second[vert_j]->index;
 
+		auto v_i = random()%2;
+		auto v_j = random()%2;
+
 		before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-		Operator::swap_verticals(slides.second, vert_i, vert_j);
+		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
 		after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 		diff = after - before;
 		if(accept_func(i,working_cpy.size(),diff)){
@@ -314,7 +317,7 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 			cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
 		}
-		Operator::swap_verticals(slides.second, vert_i, vert_j);
+		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
 	}
 
 	return working_cpy;
@@ -396,7 +399,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 				auto l = slides.second[vert_i]->index;
 				auto r = slides.second[vert_j]->index;
 
-				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j);
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, random()%2, random()%2);
 				auto before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
@@ -460,18 +463,115 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 	return working_cpy;
 }
 
-unsigned average_per_group(const SlideShow &slideshow, int start_index){
+typedef vector<tuple<function<SlideShow()>, int, int>> Chromossome;
+namespace Crossover{
 
-	unsigned res = 0;
-	for(auto i = 0; i<16 && start_index+i<slideshow.size(); i++){
-		unsigned cur = 0;
+	Chromossome one_point(const Chromossome &l, const Chromossome &r, unsigned point){
+
+		Chromossome new_chromo;
+		new_chromo.reserve(l.size());
+
+		new_chromo.insert(new_chromo.begin(), l.begin(), l.begin()+point);
+		new_chromo.insert(new_chromo.end(), r.begin()+point, r.end());
+
+		return new_chromo;
 	}
 
-	return res;
-}
+};
+
+
 SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 
-	return slideshow
+	SlideShow working_cpy(slides.first);
+
+	std::random_device rd;
+	std::mt19937 g(rd());
+	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
+
+	const unsigned max_chromossome_size = 1000;
+	std::uniform_int_distribution<> chrom_dis(0, max_chromossome_size);
+
+	vector<Chromossome> current_gen;
+	for(auto i=0;i<10;i++){
+		current_gen.push_back(Chromossome());
+		for(auto j=0;j<max_chromossome_size;j++){
+			auto l = dis(g);
+			auto r = dis(g);
+			if(l == r)
+				r = (r+1)%working_cpy.size();
+
+			auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
+			current_gen[i].push_back(make_tuple(operation, l, r));
+
+		}
+
+	}
+	std::uniform_int_distribution<> gen_dist(0, current_gen.size()-1);
+	vector<Chromossome> next_gen;
+	next_gen.reserve(current_gen.size()*2);
+	vector<pair<int, int>> results;
+	results.reserve(next_gen.size());
+
+	int best_ans_value = 0;
+	Chromossome best_ans;
+	best_ans.reserve(max_chromossome_size);
+	for(auto i=0;i<50;i++){
+		next_gen.clear();
+		cout << next_gen.size() << " " << next_gen.capacity() << endl;
+		while(next_gen.size() != next_gen.capacity()){
+			auto l = gen_dist(g);
+			auto r = gen_dist(g);
+			if(l == r)
+				r = (r+1)%current_gen.size();
+
+			next_gen.push_back(Crossover::one_point(current_gen[l], current_gen[r], chrom_dis(g)));
+		}
+
+
+		results.clear();
+		for(auto j=0; j<next_gen.size(); j++){
+			int after = 0;
+			int before = 0;
+			for(const auto &operation : next_gen[j]){
+				auto l = get<1>(operation);
+				auto r = get<2>(operation);
+				before += calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+				get<0>(operation)();
+				after += calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+			}
+			results.push_back(make_pair(after-before, j));
+
+			for(auto it = next_gen[j].rbegin(); it!=next_gen[j].rend(); it++)
+				get<0>(*it)();
+		}
+
+		sort(results.begin(), results.end(), [](auto &l, auto &r){
+				return l.first > r.first;
+				});
+		for(auto j=0; j<current_gen.size();j++){
+			auto &current = current_gen[j];
+			current.clear();
+
+			auto &replacer = next_gen[results[j].second];
+			current.insert(current.begin(), replacer.begin(), replacer.end());
+		}
+
+
+		if(best_ans_value < results[0].first){
+			best_ans_value = results[0].first;
+			cout << "Found new best! Delta: " << best_ans_value << endl;
+			best_ans.clear();
+			auto &replacer = next_gen[results[0].second];
+			best_ans.insert(best_ans.begin(), replacer.begin(), replacer.end());
+		}
+
+	}
+
+	for(const auto &operation : best_ans)
+		get<0>(operation)();
+
+	return working_cpy;
 }
 
 
@@ -522,7 +622,7 @@ int main(){
                 tabu_search(before);
                 break;
             case 4:
-                //genetic
+		genetic_algorithm(before);
                 break;
             default:
                 cout << "Invalid choice." << endl;
