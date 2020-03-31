@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <random>
 #include <ctime>
+#include <chrono>
 
 using namespace std;
 
@@ -258,13 +259,13 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
     else if(delta == 0){return false;}
 
     else{
-        cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
+        //cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
         bool accepted = ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
         if(accepted){
-            cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
+            //cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
         }
         else{
-            cout << "\tWorse Move not accepted\n";
+            //cout << "\tWorse Move not accepted\n";
         }
         return  accepted;
 
@@ -272,7 +273,7 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
 }
 
 
-SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool(int, int, int)> accept_func){
+SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool(int, int, int)> accept_func, int num_iter){
     SlideShow working_cpy(slides.first);
 
 	std::random_device rd;
@@ -283,8 +284,8 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 
 
 	auto cur_value = evaluation(working_cpy);
-	cout << working_cpy.size() << "\n";
-	for(int i = 0; i<working_cpy.size(); i++){
+	//cout << working_cpy.size() << "\n";
+	for(int i = 0; i<num_iter; i++){
 		auto l = dis(g);
 		auto r = dis(g);
 		if(l == r)
@@ -294,9 +295,9 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		Operator::swap_slides(working_cpy, l, r);
 		int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 		int diff = after - before;
-		if(accept_func(i,working_cpy.size(),diff)){
+		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
-			cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
+			//cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
 		}
 		Operator::swap_slides(working_cpy, l, r);
@@ -318,9 +319,9 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
 		after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 		diff = after - before;
-		if(accept_func(i,working_cpy.size(),diff)){
+		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
-			cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
+			//cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
 		}
 		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
@@ -357,7 +358,7 @@ vector<long> block_hash(const SlideShow &slideshow){
 	return result;
 }
 
-SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
+SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu_list_size){
     SlideShow working_cpy(slides.first);
 
 	std::random_device rd;
@@ -369,16 +370,19 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	cout << working_cpy.size() << "\n";
+	//cout << working_cpy.size() << "\n";
 
 	vector<function<SlideShow()>> operator_order;
 	operator_order.reserve(working_cpy.size());
 
 	auto cur_value = evaluation(working_cpy);
+	auto working_cpy_value = cur_value;
 	int best_index = -1;
-	for(int i = 0; i<working_cpy.size(); i++){
+
+	for(int i = 0; i<num_iter; i++){
 
 		tuple<unsigned, function<SlideShow()>, int, int> cur_op = make_tuple(0, nullptr, 0, 0);
+		string cur_op_str;
 		for(auto i=0;i<10;i++){
 
 			bool horizontal_swap = (slides.second.size() == 0 ? true : (random() % 2 == 0));
@@ -395,8 +399,10 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 				int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value)
-					cur_op = make_tuple(cur_value + (after - before), operation, l, r);
+				if(get<0>(cur_op) < (after - before)+working_cpy_value){
+					cur_op = make_tuple(working_cpy_value + (after - before), operation, l, r);
+				}
+
 			}
 			else{
 				auto vert_i = vert_dis(g);
@@ -405,14 +411,17 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 				auto l = slides.second[vert_i]->index;
 				auto r = slides.second[vert_j]->index;
 
-				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, random()%2, random()%2);
+				auto index_one = random()%2;
+				auto index_two = random()%2;
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, index_one, index_two);
 				auto before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value)
-					cur_op = make_tuple(cur_value + after - before, operation, l, r);
+				if(get<0>(cur_op) < (after - before)+working_cpy_value){
+					cur_op = make_tuple(working_cpy_value + after - before, operation, l, r);
+				}
 			}
 
 		}
@@ -436,7 +445,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 			if(entry.first != get<0>(cur_op))
 				continue;
 
-			if(cur_op_hash == cur_hash){
+			if(cur_op_hash == entry.second){
+				//cout << "Removing" << endl;
 				operator_order[operator_order.size()-1]();
 				operator_order.pop_back();
 				failed=true;
@@ -447,17 +457,19 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 		if(failed)
 			continue;
 
-		if(cur_value < get<0>(cur_op)){
+		working_cpy_value = get<0>(cur_op);
+		if(cur_value < working_cpy_value){
 			best_index = operator_order.size()-1;
 			tabu_list.push_back(make_pair(cur_value, cur_hash));
 
-			while(tabu_list.size() > 100)
+			while(tabu_list.size() > tabu_list_size)
 				tabu_list.pop_front();
 
 			cur_hash = cur_op_hash;
-			cur_value = get<0>(cur_op);
-			cout << "Found better one " << cur_value << " " << i << endl;
+			cur_value = working_cpy_value;
 		}
+		//middle_values.push_back(get<0>(cur_op));
+		//middle_strings.push_back(cur_op_str);
 	}
 
 	for(auto it=operator_order.rbegin(); it!=operator_order.rend(); it++)
@@ -466,6 +478,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 	for(auto i=0;i<=best_index;i++)
 		operator_order[i]();
 
+	//if(cur_value != evaluation(working_cpy))
+		//cout << "Invalid" << endl;
 	return working_cpy;
 }
 
@@ -514,7 +528,7 @@ namespace Crossover{
 };
 
 
-SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
+SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides, int num_iter, unsigned chromo_size){
 
 	SlideShow working_cpy(slides.first);
 
@@ -523,7 +537,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	const unsigned max_chromossome_size = 8000;
+	const unsigned max_chromossome_size = chromo_size;
 	std::uniform_int_distribution<> chrom_dis(0, max_chromossome_size);
 
 	vector<Chromossome> current_gen;
@@ -557,9 +571,9 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	Chromossome best_ans;
 	best_ans.reserve(max_chromossome_size);
 	std::uniform_int_distribution<> mutation_chance(0, 99);
-	for(auto i=0;i<50;i++){
+	for(auto i=0;i<num_iter;i++){
 		next_gen.clear();
-		cout << next_gen.size() << " " << next_gen.capacity() << endl;
+		//cout << next_gen.size() << " " << next_gen.capacity() << endl;
 		while(next_gen.size() != next_gen.capacity()){
 			auto l = gen_dist(g);
 			auto r = gen_dist(g);
@@ -639,7 +653,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 
 		if(best_ans_value < results[0].first){
 			best_ans_value = results[0].first;
-			cout << "Found new best! Delta: " << best_ans_value << endl;
+			//cout << "Found new best! Delta: " << best_ans_value << endl;
 			best_ans.clear();
 			auto &replacer = next_gen[results[0].second];
 			best_ans.insert(best_ans.begin(), replacer.begin(), replacer.end());
@@ -655,6 +669,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 
 
 int main(){
+
         cout << "Welcome to algoritmator 3000." << endl;
 
         static const string problems[] = {
@@ -680,36 +695,74 @@ int main(){
             "3 - Tabu Search", 
             "4 - Genetic Algorithm"};
 
-        cout << "\nChoose an algorithm:\n";
-        for (const string& s: algorithms) {
-            cout << "\t" << s << endl;
-        }
+        while(true) {
+            cout << "\nChoose an algorithm:\n";
+            for (const string& s: algorithms) {
+                cout << "\t" << s << endl;
+            }
 
-        int algo;
-        cout << "\nChoice: ";
-        cin >> algo;
+            int algo;
+            cout << "\nChoice: ";
+            cin >> algo;
 
-        auto before = load_input(problem-1);
-        SlideShow after;
-        switch(algo) {
-            case 1:
-                after = climb_with_heuristic(before, accept_move_hill_climb);
-                cout<<"Final score: " << evaluation(after) << "\n";
-                break;
-            case 2:
-                after = climb_with_heuristic(before, accept_move_annealing);
-                cout<<"Final score: " << evaluation(after) << "\n";
-                break;
-            case 3:
-                after = tabu_search(before);
-                cout<<"Final score: " << evaluation(after) << "\n";
-                break;
-            case 4:
-		        after = genetic_algorithm(before);
-                cout<<"Final score: " << evaluation(after) << "\n";
-                break;
-            default:
-                cout << "Invalid choice." << endl;
+            auto before = load_input(problem-1);
+            SlideShow after;
+
+
+            int num_iter;
+            cout << "Enter the number of max iterations: ";
+            cin >> num_iter;
+			cout << "Initial value: " << evaluation(before.first) << endl;
+
+            chrono::time_point<chrono::high_resolution_clock> start;
+            switch(algo) {
+                case 1: {
+                    start = chrono::high_resolution_clock::now();
+                    after = climb_with_heuristic(before, accept_move_hill_climb, num_iter);
+                    break;
+                }
+                case 2: {
+                    start = chrono::high_resolution_clock::now();
+                    after = climb_with_heuristic(before, accept_move_annealing, num_iter);
+                    break;
+                }
+                case 3: {
+                    int tabu_list_size;
+                    cout << "Enter a max size for the tabu list: ";
+                    cin >> tabu_list_size;
+                    start = chrono::high_resolution_clock::now();
+                    after = tabu_search(before, num_iter, tabu_list_size);
+                    break;
+                }
+                case 4: {
+                    unsigned chromo_size;
+                    cout << "Enter a chromossome size: ";
+                    cin >> chromo_size;
+                    start = chrono::high_resolution_clock::now();
+					after = genetic_algorithm(before, num_iter, chromo_size);
+                    break;
+                }
+                default: {
+                    cout << "Invalid choice." << endl;
+                    continue;
+                }
+            }
+
+            auto end = chrono::high_resolution_clock::now();
+
+            auto score = evaluation(after);
+
+
+            cout << "Score: " << score << endl;
+            cout << "Time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << "ms" << endl;
+
+            for (Slide* s: before.first) {
+                delete s->image;
+                if (s->is_vertical()) {
+                    delete s->vert_images[1];
+                }
+                delete s;
+            }
         }
 
         return 0;
