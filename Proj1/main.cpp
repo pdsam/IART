@@ -523,7 +523,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	const unsigned max_chromossome_size = 1000;
+	const unsigned max_chromossome_size = 8000;
 	std::uniform_int_distribution<> chrom_dis(0, max_chromossome_size);
 
 	vector<Chromossome> current_gen;
@@ -531,7 +531,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 		current_gen.push_back(Chromossome());
 		for(auto j=0;j<max_chromossome_size;j++){
 
-			if(random()%11 > 6){
+			if(slides.second.size() > 0 && random()%11 < 6){
 				auto l = vert_dis(g);
 				auto r = vert_dis(g);
 				auto operation = bind(Operator::swap_verticals, ref(slides.second), l, r, random()%2, random()%2);
@@ -543,6 +543,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 				auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
 				current_gen[i].push_back(make_tuple(operation, l, r));
 			}
+
 		}
 
 	}
@@ -555,6 +556,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	int best_ans_value = 0;
 	Chromossome best_ans;
 	best_ans.reserve(max_chromossome_size);
+	std::uniform_int_distribution<> mutation_chance(0, 99);
 	for(auto i=0;i<50;i++){
 		next_gen.clear();
 		cout << next_gen.size() << " " << next_gen.capacity() << endl;
@@ -581,21 +583,24 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 					break;
 			}
 
-			if(random()%100 > 95){
+			if(mutation_chance(g) > 95){
 				auto &last_chromo = next_gen[next_gen.size()-1];
-				if(random()%2){
-					auto n_l = vert_dis(g);
-					auto n_r = vert_dis(g);
-					auto operation = bind(Operator::swap_verticals, ref(slides.second), n_l, n_r, random()%2, random()%2);
+				auto num_mutation = random()%10;
+				for(auto _=0;_<=num_mutation; _++){
+					if(slides.second.size() > 0 && random()%2){
+						auto n_l = vert_dis(g);
+						auto n_r = vert_dis(g);
+						auto operation = bind(Operator::swap_verticals, ref(slides.second), n_l, n_r, random()%2, random()%2);
 
-					last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+						last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
 
-				}
-				else{
-					auto n_l = dis(g);
-					auto n_r = dis(g);
-					auto operation = bind(Operator::swap_slides, ref(working_cpy), n_l, n_r);
-					last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+					}
+					else{
+						auto n_l = dis(g);
+						auto n_r = dis(g);
+						auto operation = bind(Operator::swap_slides, ref(working_cpy), n_l, n_r);
+						last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+					}
 				}
 
 			}
