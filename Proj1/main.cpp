@@ -376,10 +376,13 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	operator_order.reserve(working_cpy.size());
 
 	auto cur_value = evaluation(working_cpy);
+	auto working_cpy_value = cur_value;
 	int best_index = -1;
+
 	for(int i = 0; i<num_iter; i++){
 
 		tuple<unsigned, function<SlideShow()>, int, int> cur_op = make_tuple(0, nullptr, 0, 0);
+		string cur_op_str;
 		for(auto i=0;i<10;i++){
 
 			bool horizontal_swap = (slides.second.size() == 0 ? true : (random() % 2 == 0));
@@ -396,8 +399,10 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value)
-					cur_op = make_tuple(cur_value + (after - before), operation, l, r);
+				if(get<0>(cur_op) < (after - before)+cur_value){
+					cur_op = make_tuple(working_cpy_value + (after - before), operation, l, r);
+				}
+
 			}
 			else{
 				auto vert_i = vert_dis(g);
@@ -406,14 +411,17 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				auto l = slides.second[vert_i]->index;
 				auto r = slides.second[vert_j]->index;
 
-				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, random()%2, random()%2);
+				auto index_one = random()%2;
+				auto index_two = random()%2;
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, index_one, index_two);
 				auto before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 
-				if(get<0>(cur_op) < (after - before)+cur_value)
-					cur_op = make_tuple(cur_value + after - before, operation, l, r);
+				if(get<0>(cur_op) < (after - before)+cur_value){
+					cur_op = make_tuple(working_cpy_value + after - before, operation, l, r);
+				}
 			}
 
 		}
@@ -437,7 +445,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 			if(entry.first != get<0>(cur_op))
 				continue;
 
-			if(cur_op_hash == cur_hash){
+			if(cur_op_hash == entry.second){
+				cout << "Removing" << endl;
 				operator_order[operator_order.size()-1]();
 				operator_order.pop_back();
 				failed=true;
@@ -448,7 +457,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 		if(failed)
 			continue;
 
-		if(cur_value < get<0>(cur_op)){
+		working_cpy_value = get<0>(cur_op);
+		if(cur_value < working_cpy_value){
 			best_index = operator_order.size()-1;
 			tabu_list.push_back(make_pair(cur_value, cur_hash));
 
@@ -456,9 +466,10 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				tabu_list.pop_front();
 
 			cur_hash = cur_op_hash;
-			cur_value = get<0>(cur_op);
-			cout << "Found better one " << cur_value << " " << i << endl;
+			cur_value = working_cpy_value;
 		}
+		//middle_values.push_back(get<0>(cur_op));
+		//middle_strings.push_back(cur_op_str);
 	}
 
 	for(auto it=operator_order.rbegin(); it!=operator_order.rend(); it++)
@@ -467,6 +478,8 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	for(auto i=0;i<=best_index;i++)
 		operator_order[i]();
 
+	if(cur_value != evaluation(working_cpy))
+		cout << "Invalid" << endl;
 	return working_cpy;
 }
 
@@ -474,7 +487,6 @@ typedef vector<tuple<function<SlideShow()>, int, int>> Chromossome;
 namespace Crossover{
 
 	Chromossome one_point(const Chromossome &l, const Chromossome &r, unsigned point){
-
 		Chromossome new_chromo;
 		new_chromo.reserve(l.size());
 
@@ -484,6 +496,35 @@ namespace Crossover{
 		return new_chromo;
 	}
 
+	Chromossome two_point(const Chromossome &l, const Chromossome &r, unsigned point_uno, unsigned point_duo){
+		Chromossome new_chromo;
+		new_chromo.reserve(l.size());
+
+		new_chromo.insert(new_chromo.begin(), l.begin(), l.begin()+point_uno);
+		new_chromo.insert(new_chromo.end(), r.begin()+point_uno, r.begin()+point_duo);
+		new_chromo.insert(new_chromo.end(), l.begin()+point_duo, l.end());
+
+		return new_chromo;
+	}
+
+	Chromossome uniform(const Chromossome &l, const Chromossome &r){
+		Chromossome new_chromo;
+		new_chromo.reserve(l.size());
+
+		auto it_one = l.begin();
+		auto it_two = r.begin();
+		for(auto i=0;i<new_chromo.capacity();i++){
+			if(random()%2){
+				new_chromo.push_back(*(it_one+i));
+			}
+			else{
+				new_chromo.push_back(*(it_two+i));
+
+			}
+		}
+
+		return new_chromo;
+	}
 };
 
 
@@ -496,20 +537,26 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	const unsigned max_chromossome_size = 1000;
+	const unsigned max_chromossome_size = 8000;
 	std::uniform_int_distribution<> chrom_dis(0, max_chromossome_size);
 
 	vector<Chromossome> current_gen;
 	for(auto i=0;i<10;i++){
 		current_gen.push_back(Chromossome());
 		for(auto j=0;j<max_chromossome_size;j++){
-			auto l = dis(g);
-			auto r = dis(g);
-			if(l == r)
-				r = (r+1)%working_cpy.size();
 
-			auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
-			current_gen[i].push_back(make_tuple(operation, l, r));
+			if(slides.second.size() > 0 && random()%11 < 6){
+				auto l = vert_dis(g);
+				auto r = vert_dis(g);
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), l, r, random()%2, random()%2);
+				current_gen[i].push_back(make_tuple(operation, l, r));
+			}
+			else{
+				auto l = dis(g);
+				auto r = dis(g);
+				auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
+				current_gen[i].push_back(make_tuple(operation, l, r));
+			}
 
 		}
 
@@ -523,6 +570,7 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 	int best_ans_value = 0;
 	Chromossome best_ans;
 	best_ans.reserve(max_chromossome_size);
+	std::uniform_int_distribution<> mutation_chance(0, 99);
 	for(auto i=0;i<50;i++){
 		next_gen.clear();
 		cout << next_gen.size() << " " << next_gen.capacity() << endl;
@@ -532,7 +580,45 @@ SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
 			if(l == r)
 				r = (r+1)%current_gen.size();
 
-			next_gen.push_back(Crossover::one_point(current_gen[l], current_gen[r], chrom_dis(g)));
+			auto p1 = chrom_dis(g);
+			auto p2 = chrom_dis(g);
+			switch(random()%3){
+				case 0:
+					next_gen.push_back(Crossover::one_point(current_gen[l], current_gen[r], chrom_dis(g)));
+					break;
+				case 1:
+					while(p1==p2)
+						p2 = chrom_dis(g);
+
+					next_gen.push_back(Crossover::two_point(current_gen[l], current_gen[r], min(p1,p2), max(p1,p2)));
+					break;
+				case 2:
+					next_gen.push_back(Crossover::uniform(current_gen[l], current_gen[r]));
+					break;
+			}
+
+			if(mutation_chance(g) > 95){
+				auto &last_chromo = next_gen[next_gen.size()-1];
+				auto num_mutation = random()%10;
+				for(auto _=0;_<=num_mutation; _++){
+					if(slides.second.size() > 0 && random()%2){
+						auto n_l = vert_dis(g);
+						auto n_r = vert_dis(g);
+						auto operation = bind(Operator::swap_verticals, ref(slides.second), n_l, n_r, random()%2, random()%2);
+
+						last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+
+					}
+					else{
+						auto n_l = dis(g);
+						auto n_r = dis(g);
+						auto operation = bind(Operator::swap_slides, ref(working_cpy), n_l, n_r);
+						last_chromo[random()%last_chromo.size()] = make_tuple(operation, n_l, n_r);
+					}
+				}
+
+			}
+
 		}
 
 
@@ -625,6 +711,7 @@ int main(){
             int num_iter;
             cout << "Enter the number of max iterations: ";
             cin >> num_iter;
+			cout << "Initial value: " << evaluation(before.first) << endl;
 
             chrono::time_point<chrono::high_resolution_clock> start;
             switch(algo) {
@@ -674,13 +761,5 @@ int main(){
             }
         }
 
-        /*
-		srand(time(nullptr));
-        for(int i=3; i<4; i++){
-                auto before = loadInput(i);
-                cout << "Before: " << evaluation(before.first) << endl;
-                auto after = tabu_search(before);
-                cout << "After: " << evaluation(after) << endl;
-        }*/
         return 0;
 }
