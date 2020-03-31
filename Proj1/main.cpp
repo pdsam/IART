@@ -64,7 +64,7 @@ struct Slide{
 typedef vector<Slide*> SlideShow;
 
 
-pair<SlideShow, SlideShow> loadInput(int input)
+pair<SlideShow, SlideShow> load_input(int input)
 {
     SlideShow slideshow;
         vector<Image*> vertical_photos;
@@ -137,6 +137,13 @@ pair<SlideShow, SlideShow> loadInput(int input)
     for(auto &element : slideshow)
         element->do_tags();
 
+	random_device rd;
+	shuffle(slideshow.begin(), slideshow.end(), mt19937(rd()));
+
+	size_t i = 0;
+	for_each(slideshow.begin(), slideshow.end(), [&i](auto s) {
+				s->index=i++;
+			});
     return make_pair(slideshow, vertical_slides);
 }
 
@@ -196,12 +203,12 @@ namespace Operator{
                 return slideshow;
         }
 
-        SlideShow swap_verticals(SlideShow &slideshow, int i, int j) {
+        SlideShow swap_verticals(SlideShow &slideshow, int i, int j, int v_i, int v_j) {
             if (!slideshow[i]->is_vertical() || !slideshow[j]->is_vertical()) {
                 return slideshow;
             }
 
-            swap(slideshow[i]->vert_images[1], slideshow[j]->vert_images[1]);
+            swap(slideshow[i]->vert_images[v_i], slideshow[j]->vert_images[v_j]);
             slideshow[i]->do_tags();
             slideshow[j]->do_tags();
 
@@ -252,11 +259,17 @@ inline bool accept_move_annealing(int iteration,int maxIteration , int delta){
     else if(delta == 0){return false;}
 
     else{
-    cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
-      return  ((double) rand() / (RAND_MAX)) > exp(-delta/(maxIteration/(double)iteration));
+        cout << "i: " << iteration << " maxIteration: " << maxIteration << " delta: " << delta << "\n";
+        bool accepted = ((double) rand() / (RAND_MAX)) < exp(delta/(maxIteration/(double)iteration));
+        if(accepted){
+            cout << "\tWorse Move accepted with a probability of: " << (int) (exp(delta/(maxIteration/(double)iteration))*100)<<"%" << "\n";
+        }
+        else{
+            cout << "\tWorse Move not accepted\n";
+        }
+        return  accepted;
+
     }
-
-
 }
 
 
@@ -266,15 +279,9 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 	std::random_device rd;
 	std::mt19937 g(rd());
 
-	 shuffle(working_cpy.begin(), working_cpy.end(), g);
-
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	size_t i = 0;
-	for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
-				s->index=i++;
-			});
 
 	auto cur_value = evaluation(working_cpy);
 	cout << working_cpy.size() << "\n";
@@ -288,7 +295,7 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		Operator::swap_slides(working_cpy, l, r);
 		int after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 		int diff = after - before;
-		if(accept_func(i,working_cpy.size(),diff)){
+		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
 			cout << "     SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
@@ -305,16 +312,19 @@ SlideShow climb_with_heuristic(pair<SlideShow, SlideShow> &slides, function<bool
 		l = slides.second[vert_i]->index;
 		r = slides.second[vert_j]->index;
 
+		auto v_i = random()%2;
+		auto v_j = random()%2;
+
 		before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
-		Operator::swap_verticals(slides.second, vert_i, vert_j);
+		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
 		after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 		diff = after - before;
-		if(accept_func(i,working_cpy.size(),diff)){
+		if(accept_func(i, num_iter, diff)){
 			cur_value += diff;
 			cout << "VERT SWAP - New Value! " << cur_value << " " << i << endl;
 			continue;
 		}
-		Operator::swap_verticals(slides.second, vert_i, vert_j);
+		Operator::swap_verticals(slides.second, vert_i, vert_j, v_i, v_j);
 	}
 
 	return working_cpy;
@@ -324,7 +334,7 @@ long calculate_hash(const SlideShow &slideshow, int start_index){
 
 	long res = 0;
 	for(auto i = 0; i<16 && start_index+i<slideshow.size(); i++){
-		unsigned cur = 0;
+		long cur = 0;
 		cur = reinterpret_cast<long>(&slideshow[i+start_index]);
 
 		
@@ -360,11 +370,6 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
 	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
 
-	size_t i = 0;
-	for_each(working_cpy.begin(), working_cpy.end(), [&i](auto s) {
-				s->index=i++;
-			});
-
 	cout << working_cpy.size() << "\n";
 
 	vector<function<SlideShow()>> operator_order;
@@ -372,7 +377,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 
 	auto cur_value = evaluation(working_cpy);
 	int best_index = -1;
-	for(int i = 0; i<working_cpy.size(); i++){
+	for(int i = 0; i<num_iter; i++){
 
 		tuple<unsigned, function<SlideShow()>, int, int> cur_op = make_tuple(0, nullptr, 0, 0);
 		for(auto i=0;i<10;i++){
@@ -401,7 +406,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 				auto l = slides.second[vert_i]->index;
 				auto r = slides.second[vert_j]->index;
 
-				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j);
+				auto operation = bind(Operator::swap_verticals, ref(slides.second), vert_i, vert_j, random()%2, random()%2);
 				auto before = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
 				operation();
 				auto after = calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
@@ -447,7 +452,7 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 			best_index = operator_order.size()-1;
 			tabu_list.push_back(make_pair(cur_value, cur_hash));
 
-			while(tabu_list.size() > 100)
+			while(tabu_list.size() > tabu_list_size)
 				tabu_list.pop_front();
 
 			cur_hash = cur_op_hash;
@@ -461,6 +466,117 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides, int num_iter, int tabu
 
 	for(auto i=0;i<=best_index;i++)
 		operator_order[i]();
+
+	return working_cpy;
+}
+
+typedef vector<tuple<function<SlideShow()>, int, int>> Chromossome;
+namespace Crossover{
+
+	Chromossome one_point(const Chromossome &l, const Chromossome &r, unsigned point){
+
+		Chromossome new_chromo;
+		new_chromo.reserve(l.size());
+
+		new_chromo.insert(new_chromo.begin(), l.begin(), l.begin()+point);
+		new_chromo.insert(new_chromo.end(), r.begin()+point, r.end());
+
+		return new_chromo;
+	}
+
+};
+
+
+SlideShow genetic_algorithm(pair<SlideShow, SlideShow> &slides){
+
+	SlideShow working_cpy(slides.first);
+
+	std::random_device rd;
+	std::mt19937 g(rd());
+	std::uniform_int_distribution<> dis(0, working_cpy.size()-1);
+	std::uniform_int_distribution<> vert_dis(0, slides.second.size()-1);
+
+	const unsigned max_chromossome_size = 1000;
+	std::uniform_int_distribution<> chrom_dis(0, max_chromossome_size);
+
+	vector<Chromossome> current_gen;
+	for(auto i=0;i<10;i++){
+		current_gen.push_back(Chromossome());
+		for(auto j=0;j<max_chromossome_size;j++){
+			auto l = dis(g);
+			auto r = dis(g);
+			if(l == r)
+				r = (r+1)%working_cpy.size();
+
+			auto operation = bind(Operator::swap_slides, ref(working_cpy), l, r);
+			current_gen[i].push_back(make_tuple(operation, l, r));
+
+		}
+
+	}
+	std::uniform_int_distribution<> gen_dist(0, current_gen.size()-1);
+	vector<Chromossome> next_gen;
+	next_gen.reserve(current_gen.size()*2);
+	vector<pair<int, int>> results;
+	results.reserve(next_gen.size());
+
+	int best_ans_value = 0;
+	Chromossome best_ans;
+	best_ans.reserve(max_chromossome_size);
+	for(auto i=0;i<50;i++){
+		next_gen.clear();
+		cout << next_gen.size() << " " << next_gen.capacity() << endl;
+		while(next_gen.size() != next_gen.capacity()){
+			auto l = gen_dist(g);
+			auto r = gen_dist(g);
+			if(l == r)
+				r = (r+1)%current_gen.size();
+
+			next_gen.push_back(Crossover::one_point(current_gen[l], current_gen[r], chrom_dis(g)));
+		}
+
+
+		results.clear();
+		for(auto j=0; j<next_gen.size(); j++){
+			int after = 0;
+			int before = 0;
+			for(const auto &operation : next_gen[j]){
+				auto l = get<1>(operation);
+				auto r = get<2>(operation);
+				before += calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+				get<0>(operation)();
+				after += calc_around_slide(working_cpy, l) + calc_around_slide(working_cpy, r);
+			}
+			results.push_back(make_pair(after-before, j));
+
+			for(auto it = next_gen[j].rbegin(); it!=next_gen[j].rend(); it++)
+				get<0>(*it)();
+		}
+
+		sort(results.begin(), results.end(), [](auto &l, auto &r){
+				return l.first > r.first;
+				});
+		for(auto j=0; j<current_gen.size();j++){
+			auto &current = current_gen[j];
+			current.clear();
+
+			auto &replacer = next_gen[results[j].second];
+			current.insert(current.begin(), replacer.begin(), replacer.end());
+		}
+
+
+		if(best_ans_value < results[0].first){
+			best_ans_value = results[0].first;
+			cout << "Found new best! Delta: " << best_ans_value << endl;
+			best_ans.clear();
+			auto &replacer = next_gen[results[0].second];
+			best_ans.insert(best_ans.begin(), replacer.begin(), replacer.end());
+		}
+
+	}
+
+	for(const auto &operation : best_ans)
+		get<0>(operation)();
 
 	return working_cpy;
 }
@@ -502,21 +618,23 @@ int main(){
             cout << "\nChoice: ";
             cin >> algo;
 
-            auto before = loadInput(problem-1);
+            auto before = load_input(problem-1);
             SlideShow after;
 
-            auto start = chrono::high_resolution_clock::now();
 
             int num_iter;
             cout << "Enter the number of max iterations: ";
             cin >> num_iter;
 
+            chrono::time_point<chrono::high_resolution_clock> start;
             switch(algo) {
                 case 1: {
+                    start = chrono::high_resolution_clock::now();
                     after = climb_with_heuristic(before, accept_move_hill_climb, num_iter);
                     break;
                 }
                 case 2: {
+                    start = chrono::high_resolution_clock::now();
                     after = climb_with_heuristic(before, accept_move_annealing, num_iter);
                     break;
                 }
@@ -524,10 +642,12 @@ int main(){
                     int tabu_list_size;
                     cout << "Enter a max size for the tabu list: ";
                     cin >> tabu_list_size;
+                    start = chrono::high_resolution_clock::now();
                     after = tabu_search(before, num_iter, tabu_list_size);
                     break;
                 }
                 case 4: {
+                    start = chrono::high_resolution_clock::now();
                     //after = genetic
                     break;
                 }
@@ -544,7 +664,6 @@ int main(){
 
             cout << "Score: " << score << endl;
             cout << "Time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << "ms" << endl;
-
         }
 
         /*
