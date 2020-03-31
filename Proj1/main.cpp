@@ -373,20 +373,40 @@ SlideShow tabu_search(pair<SlideShow, SlideShow> &slides){
 
 
 
-typedef vector<int> Chromossome;
+
+struct Chromossome{
+    vector<int> genepool;
+    int fitness = -1;
+    int get_fitness(SlideShow &slides){
+        if(fitness < 0){
+            SlideShow toEvaluate;
+            for(int i = 0; i < genepool.size();i++){
+                toEvaluate.push_back(slides.at(genepool.at(i)));
+            }
+            fitness = evaluation(toEvaluate);
+
+        }
+            return fitness;
+    }
+
+};
+
+
+
 typedef vector<Chromossome> Population;
 
 SlideShow genetic(int size_generated, int size_survivors, int max_iterations, pair<SlideShow, SlideShow> &slides, double mutation_percentage){
     Population population;
-    Chromossome base(slides.first.size());    
+    Chromossome base= Chromossome();
+    base.genepool = vector<int>(slides.first.size());  
     std::random_device rd;
 	std::mt19937 g(rd());
 
-    iota(begin(base),end(base),0);
+    iota(begin(base.genepool),end(base.genepool),0);
     for(int i = 0; i < size_survivors;++i){
 
         Chromossome seeder = base;
-        shuffle(seeder.begin(), seeder.end(), g);
+        shuffle(seeder.genepool.begin(), seeder.genepool.end(), g);
         population.push_back(seeder);
     }
 
@@ -401,9 +421,9 @@ SlideShow genetic(int size_generated, int size_survivors, int max_iterations, pa
 
             //picking crossover point
             default_random_engine generator;
-            normal_distribution<int> distribution(offspring.size()/2, offspring.size/4);
+            normal_distribution<int> distribution(offspring.genepool.size()/2, offspring.genepool.size/4);
 
-            int crossover_point = distribution(generator) % offspring.size();
+            int crossover_point = distribution(generator) % offspring.genepool.size();
             
             //doing crossover
 
@@ -411,8 +431,8 @@ SlideShow genetic(int size_generated, int size_survivors, int max_iterations, pa
 
             if(((double) rand() / (RAND_MAX)) < mutation_percentage / 100){
 
-                auto x = offspring.begin() + rand() % offspring.size();
-                auto y =offspring.begin() + rand() % offspring.size();
+                auto x = offspring.genepool.begin() + rand() % offspring.genepool.size();
+                auto y =offspring.genepool.begin() + rand() % offspring.genepool.size();
 
                 iter_swap(x,y);
 
