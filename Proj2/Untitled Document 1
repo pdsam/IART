@@ -1,0 +1,6 @@
+steps to a good jupyter notebook by bugalho
+
+1- Analyse the date, seek for any outliers and check if there is no error in their entry like empty value, really diferent values(like by an order of magnitude) .
+2- Convert categorical variables into binary stubs for performance.
+3- Split the data into the test and training set.
+4- Let the libs do the shit for you
