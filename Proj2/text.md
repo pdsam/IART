@@ -9,3 +9,6 @@ been collected for many games in various countries, such as play-by-play data in
 Information like this can be found in datasets like [the Football Events dataset](https://datasetsearch.research.google.com/search?docid=beC2NjeMuiLj9GvLAAAAAA%3D%3D) found on kaggle.
 
 This projects objective is to use the above mentioned dataset to predict the number of goals on a football game using Regression algorithms.
+This paper will start with an explanation and analysis of the used dataset, followed by an explanation of the approach the was decided to be used.
+
+Tests will be performed on the developed models and explanation for the results will be given at the end.
