@@ -12,3 +12,9 @@ This projects objective is to use the above mentioned dataset to predict the num
 This paper will start with an explanation and analysis of the used dataset, followed by an explanation of the approach the was decided to be used.
 
 Tests will be performed on the developed models and explanation for the results will be given at the end.
+
+## Conclusions
+
+The data set, and inherently the model, are flawed.
+In essence, football games present an extremelly non deterministic world.
+This makes regression models have a hard time being accurate.
